@@ -8,7 +8,7 @@ const appStore = useAppStore();
 
 <template>
   <header
-    class="fixed top-0 left-0 lg:left-72 right-0 h-16 bg-surface/90 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-40 flex items-center justify-between px-4 sm:px-6 lg:px-8"
+    class="fixed top-0 left-0 lg:left-72 right-0 h-16 bg-surface/90 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-40 flex items-center justify-between px-4 sm:px-6 lg:px-8 border-b border-outline-variant/15"
   >
     <!-- Left: Selected Farm Selector & Satellite Pill -->
     <div class="flex items-center gap-3 flex-1 max-w-xl">
@@ -17,7 +17,7 @@ const appStore = useAppStore();
       >
         <span class="material-symbols-outlined text-primary text-[20px]">pin_drop</span>
         <div class="text-left">
-          <p class="font-label-md text-label-md text-on-surface-variant leading-none">Parcelle active</p>
+          <p class="font-label-md text-label-md text-on-surface-variant leading-none">{{ appStore.t('app.activePlot') }}</p>
           <p class="font-body-bold text-label-lg text-on-surface leading-tight">
             {{ farmStore.activePlot.coordinates.locality }} • {{ farmStore.activePlot.surfaceHa }} ha
           </p>
@@ -32,12 +32,27 @@ const appStore = useAppStore();
       </div>
     </div>
 
-    <!-- Right: Notification & Profile -->
-    <div class="flex items-center gap-3">
+    <!-- Right: Language Switcher, Notification & Profile -->
+    <div class="flex items-center gap-2.5 sm:gap-3">
+      <!-- SPONTANEOUS LANGUAGE SWITCHER BUTTON -->
+      <button
+        type="button"
+        @click="appStore.toggleLanguage"
+        class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-surface-container hover:bg-surface-container-high border border-outline-variant/30 text-on-surface font-label-md text-label-md transition-all shadow-xs active:scale-95 cursor-pointer min-h-[38px]"
+        :title="appStore.t('app.switchLang')"
+      >
+        <span class="material-symbols-outlined text-primary text-[18px]">translate</span>
+        <span class="flex items-center gap-1 font-mono font-bold text-[13px]">
+          <span :class="appStore.language === 'en' ? 'text-primary bg-primary/10 px-1.5 py-0.5 rounded-md' : 'text-on-surface-variant opacity-70'">EN</span>
+          <span class="text-outline text-[11px]">|</span>
+          <span :class="appStore.language === 'fr' ? 'text-primary bg-primary/10 px-1.5 py-0.5 rounded-md' : 'text-on-surface-variant opacity-70'">FR</span>
+        </span>
+      </button>
+
       <!-- Offline indicator mobile -->
       <div
-        class="flex lg:hidden items-center gap-1 bg-surface-container px-2 py-1 rounded-full text-primary font-caption text-caption"
-        title="Connecté • Mode hors-ligne prêt"
+        class="hidden sm:flex lg:hidden items-center gap-1 bg-surface-container px-2 py-1 rounded-full text-primary font-caption text-caption"
+        :title="appStore.t('app.syncReady')"
       >
         <span class="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
         <span class="font-medium">Sync</span>
@@ -64,7 +79,7 @@ const appStore = useAppStore();
         />
         <div class="hidden md:block text-left">
           <p class="font-body-bold text-label-lg text-on-surface leading-none">{{ farmStore.user.name }}</p>
-          <p class="font-caption text-caption text-on-surface-variant mt-0.5 leading-none">Conseiller Agricole</p>
+          <p class="font-caption text-caption text-on-surface-variant mt-0.5 leading-none">{{ appStore.t('app.advisorRole') }}</p>
         </div>
       </RouterLink>
     </div>

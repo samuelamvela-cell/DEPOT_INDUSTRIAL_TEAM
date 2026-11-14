@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router';
 import { useFarmStore } from '@/stores/farmStore';
+import { useAppStore } from '@/stores/appStore';
 import AppCard from '@/components/common/AppCard.vue';
 import AppBadge from '@/components/common/AppBadge.vue';
 import AppButton from '@/components/common/AppButton.vue';
 
 const router = useRouter();
 const farmStore = useFarmStore();
+const appStore = useAppStore();
 
 const navigateTo = (path: string) => {
   router.push(path);
@@ -20,24 +22,24 @@ const navigateTo = (path: string) => {
       <div class="space-y-1.5">
         <div class="flex items-center gap-2 flex-wrap">
           <AppBadge variant="success" :pulse="true">
-            Campagne Agricole 2025 / Petite Saison des Pluies
+            {{ appStore.t('dashboard.campaign') }}
           </AppBadge>
           <AppBadge variant="satellite" icon="satellite_alt">
-            Données NASA synchronisées (il y a 3h)
+            {{ appStore.t('dashboard.nasaSync') }}
           </AppBadge>
         </div>
         <h1 class="font-display-lg text-headline-lg lg:text-display-lg text-on-surface tracking-tight">
-          Bonjour {{ farmStore.user.name.split(' ')[0] }}, prêt pour la planification culturale ?
+          {{ appStore.t('dashboard.greeting', { name: farmStore.user.name.split(' ')[0] }) }}
         </h1>
         <p class="font-body-md text-body-md text-on-surface-variant max-w-3xl">
-          Les satellites NASA POWER et SMAP confirment une dynamique d'humidité propice sur le bassin Lékié. Voici vos priorités d'arbitrage agronomique pour Obala Nord.
+          {{ appStore.t('dashboard.heroText') }}
         </p>
       </div>
 
       <!-- Quick Regional Micro Indicator -->
       <div class="hidden xl:flex flex-col items-end text-right bg-surface-container-lowest p-4 rounded-2xl shadow-xs min-w-[220px] border border-outline-variant/20">
-        <span class="font-caption text-caption text-on-surface-variant uppercase tracking-wider">Zone Agro-Écologique</span>
-        <span class="font-headline-sm text-headline-sm text-primary font-bold">Forêt Bimodale</span>
+        <span class="font-caption text-caption text-on-surface-variant uppercase tracking-wider">{{ appStore.t('dashboard.agroZone') }}</span>
+        <span class="font-headline-sm text-headline-sm text-primary font-bold">{{ appStore.t('dashboard.zoneName') }}</span>
         <span class="font-label-md text-label-md text-on-surface-variant mt-0.5">Obala, Cameroun • 4°10'N 11°32'E</span>
       </div>
     </div>
@@ -53,7 +55,7 @@ const navigateTo = (path: string) => {
             <div class="flex items-center gap-2">
               <span class="material-symbols-outlined text-primary text-[24px]">verified</span>
               <span class="font-label-md text-label-md text-primary font-semibold uppercase tracking-wider">
-                Parcelle Sélectionnée
+                {{ appStore.t('dashboard.selectedPlot') }}
               </span>
             </div>
             <span class="px-2.5 py-0.5 rounded-full bg-surface-container-high text-on-surface-variant font-label-md text-caption">
@@ -74,28 +76,28 @@ const navigateTo = (path: string) => {
           <div class="grid grid-cols-2 gap-2.5 pt-1">
             <div class="p-3 rounded-xl bg-surface-container-low flex flex-col">
               <span class="font-caption text-caption text-on-surface-variant flex items-center gap-1">
-                <span class="material-symbols-outlined text-[15px]">straighten</span> Superficie
+                <span class="material-symbols-outlined text-[15px]">straighten</span> {{ appStore.t('dashboard.surface') }}
               </span>
               <span class="font-headline-sm text-headline-sm text-on-surface font-bold mt-1">
                 {{ farmStore.activePlot.surfaceHa }} ha
               </span>
-              <span class="font-caption text-caption text-primary mt-0.5">100% cultivable</span>
+              <span class="font-caption text-caption text-primary mt-0.5">{{ appStore.t('dashboard.cultivable') }}</span>
             </div>
 
             <div class="p-3 rounded-xl bg-surface-container-low flex flex-col">
               <span class="font-caption text-caption text-on-surface-variant flex items-center gap-1">
-                <span class="material-symbols-outlined text-[15px]">compost</span> Type de Sol
+                <span class="material-symbols-outlined text-[15px]">compost</span> {{ appStore.t('dashboard.soilType') }}
               </span>
               <span class="font-body-bold text-label-lg text-on-surface mt-1 truncate">
                 {{ farmStore.activePlot.soilType.split(' ')[0] }}
               </span>
-              <span class="font-caption text-caption text-secondary mt-0.5">pH {{ farmStore.activePlot.soilPh }} • Équilibré</span>
+              <span class="font-caption text-caption text-secondary mt-0.5">pH {{ farmStore.activePlot.soilPh }} • {{ appStore.t('dashboard.balanced') }}</span>
             </div>
 
             <div class="p-3 rounded-xl bg-surface-container-low flex flex-col col-span-2">
               <div class="flex items-center justify-between">
                 <span class="font-caption text-caption text-on-surface-variant flex items-center gap-1">
-                  <span class="material-symbols-outlined text-[15px]">history_edu</span> Antécédent Cultural (N-1)
+                  <span class="material-symbols-outlined text-[15px]">history_edu</span> {{ appStore.t('dashboard.previousCrop') }}
                 </span>
                 <span class="font-label-md text-caption text-on-surface-variant">
                   {{ farmStore.activePlot.previousCrop.harvestDate }}
@@ -334,7 +336,7 @@ const navigateTo = (path: string) => {
 
     <!-- Mandatory Legal Disclaimer -->
     <p class="font-caption text-caption text-center text-on-surface-variant pt-2">
-      Estimation indicative, pas une prévision de rendement. Données satellitaires NASA combinées aux modèles IRAD.
+      {{ appStore.t('app.disclaimer') }} NASA Earth observations × IRAD Cameroon models.
     </p>
   </div>
 </template>

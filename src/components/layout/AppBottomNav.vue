@@ -1,15 +1,18 @@
 <script setup lang="ts">
+import { computed } from 'vue';
 import { useRoute } from 'vue-router';
+import { useAppStore } from '@/stores/appStore';
 
 const route = useRoute();
+const appStore = useAppStore();
 
-const navItems = [
-  { path: '/dashboard', label: 'Accueil', icon: 'home' },
-  { path: '/exploitation', label: 'Exploitation', icon: 'landscape' },
-  { path: '/scenarios', label: 'Scénarios', icon: 'sync_alt' },
-  { path: '/decision', label: 'Décision', icon: 'verified' },
-  { path: '/profil', label: 'Profil', icon: 'account_circle' },
-];
+const navItems = computed(() => [
+  { path: '/dashboard', label: appStore.t('nav.dashboard'), icon: 'home' },
+  { path: '/exploitation', label: appStore.t('nav.farm'), icon: 'landscape' },
+  { path: '/scenarios', label: appStore.t('nav.scenarios'), icon: 'sync_alt' },
+  { path: '/decision', label: appStore.t('nav.decision'), icon: 'verified' },
+  { path: '/profil', label: appStore.t('nav.profile'), icon: 'account_circle' },
+]);
 
 const isCurrent = (path: string) => {
   return route.path === path;

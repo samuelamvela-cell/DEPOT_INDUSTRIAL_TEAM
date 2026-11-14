@@ -1,4 +1,4 @@
-helpimport { Crop, ScoringWeights } from '@/types';
+import { Crop, ScoringWeights } from '@/types';
 
 export interface ScenarioEvaluationResult {
   score: number; // 0 to 100

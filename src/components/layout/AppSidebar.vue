@@ -1,20 +1,21 @@
 <script setup lang="ts">
+import { computed } from 'vue';
 import { useRoute } from 'vue-router';
 import { useAppStore } from '@/stores/appStore';
 
 const route = useRoute();
 const appStore = useAppStore();
 
-const navItems = [
-  { path: '/dashboard', label: 'Accueil', icon: 'space_dashboard' },
-  { path: '/exploitation', label: 'Mon Exploitation', icon: 'landscape' },
-  { path: '/climat', label: 'Analyse Climatique', icon: 'satellite_alt' },
-  { path: '/cultures', label: 'Bibliothèque Cultures', icon: 'psychiatry' },
-  { path: '/scenarios', label: 'Scénarios de Rotation', icon: 'autorenew' },
-  { path: '/decision', label: 'Comparaison & Décision', icon: 'balance' },
-  { path: '/sources', label: 'Données & Sources', icon: 'radar' },
-  { path: '/profil', label: 'Profil & Paramètres', icon: 'tune' },
-];
+const navItems = computed(() => [
+  { path: '/dashboard', label: appStore.t('nav.dashboard'), icon: 'space_dashboard' },
+  { path: '/exploitation', label: appStore.t('nav.farm'), icon: 'landscape' },
+  { path: '/climat', label: appStore.t('nav.climate'), icon: 'satellite_alt' },
+  { path: '/cultures', label: appStore.t('nav.crops'), icon: 'psychiatry' },
+  { path: '/scenarios', label: appStore.t('nav.scenarios'), icon: 'autorenew' },
+  { path: '/decision', label: appStore.t('nav.decision'), icon: 'balance' },
+  { path: '/sources', label: appStore.t('nav.sources'), icon: 'radar' },
+  { path: '/profil', label: appStore.t('nav.profile'), icon: 'tune' },
+]);
 
 const isCurrent = (path: string) => {
   return route.path === path;
@@ -34,8 +35,8 @@ const isCurrent = (path: string) => {
         <span class="material-symbols-outlined text-[24px]">psychiatry</span>
       </div>
       <div class="flex flex-col">
-        <span class="font-headline-sm text-headline-sm text-primary font-bold tracking-tight">AgroPredict</span>
-        <span class="font-caption text-[11px] text-on-surface-variant leading-none">NASA Earth × IRAD Cameroun</span>
+        <span class="font-headline-sm text-headline-sm text-primary font-bold tracking-tight">{{ appStore.t('app.name') }}</span>
+        <span class="font-caption text-[11px] text-on-surface-variant leading-none">{{ appStore.t('app.subtitle') }}</span>
       </div>
     </RouterLink>
 
@@ -64,8 +65,8 @@ const isCurrent = (path: string) => {
       <div class="bg-surface-container-lowest p-3 rounded-xl shadow-[0_1px_4px_rgba(0,0,0,0.03)] flex items-start gap-2">
         <span class="material-symbols-outlined text-primary text-[18px] mt-0.5">cloud_sync</span>
         <div class="flex-1">
-          <p class="font-label-md text-label-md text-on-surface leading-tight">Mode Hors-ligne actif</p>
-          <p class="font-caption text-caption text-on-surface-variant mt-0.5">Données NASA actualisées</p>
+          <p class="font-label-md text-label-md text-on-surface leading-tight">{{ appStore.t('app.offlineActive') }}</p>
+          <p class="font-caption text-caption text-on-surface-variant mt-0.5">{{ appStore.t('app.offlineDesc') }}</p>
         </div>
       </div>
 
@@ -73,12 +74,14 @@ const isCurrent = (path: string) => {
         <!-- Lang switcher -->
         <button
           type="button"
-          class="flex items-center gap-1 bg-surface-container-high px-3 py-1 rounded-full text-on-surface cursor-pointer hover:bg-surface-variant transition-colors"
+          class="flex items-center gap-1.5 bg-surface-container-high px-3 py-1.5 rounded-full text-on-surface cursor-pointer hover:bg-surface-variant transition-colors border border-outline-variant/30"
           @click="appStore.toggleLanguage"
+          :title="appStore.t('app.switchLang')"
         >
-          <span :class="appStore.language === 'fr' ? 'font-body-bold text-primary' : 'opacity-60'">FR</span>
-          <span class="opacity-40">/</span>
+          <span class="material-symbols-outlined text-[16px] text-primary">translate</span>
           <span :class="appStore.language === 'en' ? 'font-body-bold text-primary' : 'opacity-60'">EN</span>
+          <span class="opacity-40">/</span>
+          <span :class="appStore.language === 'fr' ? 'font-body-bold text-primary' : 'opacity-60'">FR</span>
         </button>
 
         <!-- Currency badge -->

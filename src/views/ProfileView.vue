@@ -38,19 +38,19 @@ const handleDownloadPack = () => {
       <div>
         <div class="flex items-center gap-2 text-primary font-label-md text-label-md tracking-wider uppercase">
           <span class="material-symbols-outlined text-[18px]">manage_accounts</span>
-          <span>Espace Conseiller de Terrain</span>
+          <span>{{ appStore.t('app.advisorRole') }}</span>
           <span class="w-1.5 h-1.5 rounded-full bg-primary-container"></span>
           <span class="text-on-surface-variant font-caption text-caption lowercase">nasa sync v2.4</span>
         </div>
-        <h1 class="font-headline-lg text-headline-lg text-on-surface mt-1">Profil &amp; Paramètres</h1>
+        <h1 class="font-headline-lg text-headline-lg text-on-surface mt-1">{{ appStore.t('profile.title') }}</h1>
         <p class="font-body-md text-body-md text-on-surface-variant mt-0.5 max-w-2xl">
-          Gérez votre compte conseiller, vos préférences linguistiques, le stockage hors-ligne et vos unités agronomiques.
+          {{ appStore.t('profile.subtitle') }}
         </p>
       </div>
 
       <div class="flex items-center gap-2.5 self-start md:self-auto">
         <AppButton variant="primary" icon="save" @click="handleSave">
-          Enregistrer les préférences
+          {{ appStore.t('profile.saveBtn') }}
         </AppButton>
       </div>
     </div>
@@ -147,21 +147,9 @@ const handleDownloadPack = () => {
 
           <!-- Language Selector -->
           <div class="space-y-2">
-            <label class="block font-label-md text-label-md text-on-surface">Langue de l'interface</label>
-            <div class="grid grid-cols-2 gap-3">
-              <button
-                type="button"
-                :class="[
-                  'p-3.5 rounded-xl border text-left flex items-center justify-between cursor-pointer transition-all',
-                  appStore.language === 'fr'
-                    ? 'border-primary bg-primary-fixed/20 text-on-surface font-body-bold shadow-xs'
-                    : 'border-outline-variant/30 bg-surface-container-low text-on-surface-variant',
-                ]"
-                @click="appStore.language = 'fr'"
-              >
-                <span>Français (Cameroun)</span>
-                <span v-if="appStore.language === 'fr'" class="material-symbols-outlined text-primary text-[20px]">check_circle</span>
-              </button>
+            <label class="block font-label-md text-label-md text-on-surface">{{ appStore.t('profile.langTitle') }}</label>
+            <p class="font-caption text-caption text-on-surface-variant">{{ appStore.t('profile.langDesc') }}</p>
+            <div class="grid grid-cols-2 gap-3 pt-1">
               <button
                 type="button"
                 :class="[
@@ -170,10 +158,29 @@ const handleDownloadPack = () => {
                     ? 'border-primary bg-primary-fixed/20 text-on-surface font-body-bold shadow-xs'
                     : 'border-outline-variant/30 bg-surface-container-low text-on-surface-variant',
                 ]"
-                @click="appStore.language = 'en'"
+                @click="appStore.setLanguage('en')"
               >
-                <span>English (Cameroon)</span>
+                <div>
+                  <span class="block">English (Primary)</span>
+                  <span class="text-[11px] text-on-surface-variant">Default System Language</span>
+                </div>
                 <span v-if="appStore.language === 'en'" class="material-symbols-outlined text-primary text-[20px]">check_circle</span>
+              </button>
+              <button
+                type="button"
+                :class="[
+                  'p-3.5 rounded-xl border text-left flex items-center justify-between cursor-pointer transition-all',
+                  appStore.language === 'fr'
+                    ? 'border-primary bg-primary-fixed/20 text-on-surface font-body-bold shadow-xs'
+                    : 'border-outline-variant/30 bg-surface-container-low text-on-surface-variant',
+                ]"
+                @click="appStore.setLanguage('fr')"
+              >
+                <div>
+                  <span class="block">Français (Cameroun)</span>
+                  <span class="text-[11px] text-on-surface-variant">Langue secondaire</span>
+                </div>
+                <span v-if="appStore.language === 'fr'" class="material-symbols-outlined text-primary text-[20px]">check_circle</span>
               </button>
             </div>
           </div>
