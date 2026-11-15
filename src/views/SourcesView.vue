@@ -1,89 +1,89 @@
 <script setup lang="ts">
+import { computed } from 'vue';
 import { useFarmStore } from '@/stores/farmStore';
+import { useAppStore } from '@/stores/appStore';
 import AppBadge from '@/components/common/AppBadge.vue';
+import AppButton from '@/components/common/AppButton.vue';
 
 const farmStore = useFarmStore();
+const appStore = useAppStore();
+const tr = appStore.tr;
 
-const constellations = [
-  {
-    name: 'NASA GPM IMERG',
-    fullname: 'Integrated Multi-satellitE Retrievals for GPM',
-    resolution: '0.1° (~10 km) recalé 10m SRTM',
-    frequency: 'Toutes les 30 minutes',
-    metric: 'Pluie cumulée et risque de stress hydrique',
-    history: '20 ans (2004–2024)',
-    icon: 'rainy',
-    color: 'text-tertiary',
-  },
-  {
-    name: 'NASA SMAP',
-    fullname: 'Soil Moisture Active Passive Radar',
-    resolution: 'Radar micro-ondes bande L (3 km)',
-    frequency: 'Relecture tous les 2 à 3 jours',
-    metric: 'Humidité volumétrique de la terre (0–5 cm et RU)',
-    history: 'Depuis 2015',
-    icon: 'water_loss',
-    color: 'text-primary',
-  },
-  {
-    name: 'NASA POWER',
-    fullname: 'Prediction of Worldwide Energy Resources',
-    resolution: '0.5° × 0.5°',
-    frequency: 'Mise à jour journalière synchrone',
-    metric: 'Température à 2m, ensoleillement, évapotranspiration ET₀',
-    history: '40 ans de données météo',
-    icon: 'device_thermostat',
-    color: 'text-secondary',
-  },
-  {
-    name: 'MODIS & Sentinel-2',
-    fullname: 'Moderate Resolution Imaging Spectroradiometer',
-    resolution: '250m à 10m optique multispectrale',
-    frequency: 'Passe tous les 5 à 16 jours',
-    metric: 'Indice NDVI de vigueur foliaire et biomasse',
-    history: 'Continu',
-    icon: 'psychiatry',
-    color: 'text-primary',
-  },
-];
+const t = computed(() => farmStore.telemetry);
+const plot = computed(() => farmStore.activePlot);
 
-const faqs = [
+const fetchedLabel = computed(() => {
+  const at = t.value?.provenance.fetchedAt;
+  if (!at) return tr('not fetched yet', 'pas encore récupéré');
+  return new Date(at).toLocaleString(appStore.language === 'fr' ? 'fr-FR' : 'en-GB', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  });
+});
+
+const provenanceRows = computed(() => {
+  const p = t.value?.provenance;
+  if (!p) return [];
+  return [
+    { label: tr('Provider', 'Fournisseur'), value: p.provider },
+    { label: tr('API version', 'Version API'), value: p.apiVersion },
+    { label: tr('Parameters', 'Paramètres'), value: p.parameters.join(', ') },
+    { label: tr('Resolution', 'Résolution'), value: p.resolution },
+    { label: tr('Time standard', 'Référentiel temporel'), value: p.timeStandard },
+    { label: tr('Fetched at', 'Récupéré le'), value: fetchedLabel.value },
+  ];
+});
+
+const faqs = computed(() => [
   {
-    q: 'Comment sont calculées les marges nettes en FCFA ?',
-    a: 'Les cours de référence sont actualisés chaque semaine à partir des mercuriales du MINADER et des relevés des marchés de gros du 8ème à Yaoundé et d’Obala. Les coûts des semences homologuées IRAD et de la main-d’œuvre locale sont déduits.',
+    q: tr('Where do the rainfall figures come from?', 'D’où viennent les chiffres de pluie ?'),
+    a: tr(
+      '7-day and 30-day accumulations come from NASA POWER PRECTOTCORR for the plot coordinates. The 30-day anomaly is the deviation from the 25-year normal (2001–2025) computed by NASA POWER climatology for the same calendar window.',
+      'Les cumuls sur 7 et 30 jours proviennent de NASA POWER PRECTOTCORR pour les coordonnées de la parcelle. L’anomalie 30 jours est l’écart à la normale 25 ans (2001–2025) calculée par la climatologie NASA POWER sur la même fenêtre calendaire.',
+    ),
   },
   {
-    q: 'Les résolutions satellites sont-elles adaptées aux parcelles de moins de 1 hectare ?',
-    a: 'Oui. Le downscaling topographique s’appuie sur le modèle d’élévation SRTM à 10 mètres de résolution, ce qui permet de corriger le signal pluviométrique brut selon la pente et l’exposition de la parcelle paysanne.',
+    q: tr('How is the seeding window computed?', 'Comment la fenêtre de semis est-elle calculée ?'),
+    a: tr(
+      'It is the first 14-day window whose normal rainfall exceeds half the monthly peak, taken from the POWER climatology for the plot. It is a climatological window, not a weather forecast.',
+      'C’est la première fenêtre de 14 jours dont la pluie normale dépasse la moitié du pic mensuel, issue de la climatologie POWER de la parcelle. C’est une fenêtre climatologique, pas une prévision météo.',
+    ),
   },
   {
-    q: 'Que se passe-t-il en cas de coupure de réseau internet en brousse ?',
-    a: 'AgroPredict fonctionne en mode PWA complètement hors-ligne grâce à son cache local. Les données satellites et les matrices de décision du bassin Lékié restent disponibles même en zone blanche 2G/3G.',
+    q: tr('What feeds the crop catalogue?', 'Qu’est-ce qui alimente le catalogue des cultures ?'),
+    a: tr(
+      'Eight reference varieties served by the AgroPredict API, with cycle length, seasonal water requirement, nitrogen effect, potential yield and indicative wholesale price derived from IRAD and FAO reference sheets.',
+      'Huit variétés de référence servies par l’API AgroPredict, avec durée de cycle, besoin en eau saisonnier, effet azoté, rendement potentiel et prix de gros indicatif issus des fiches IRAD et FAO.',
+    ),
   },
-];
+  {
+    q: tr('What happens with no internet in the field?', 'Que se passe-t-il sans internet sur le terrain ?'),
+    a: tr(
+      'The plot list, crop catalogue and the last telemetry response are kept in the browser cache, so the already computed rotations stay readable offline. New telemetry requests need a connection.',
+      'La liste des parcelles, le catalogue et la dernière réponse de télémétrie restent en cache navigateur : les rotations déjà calculées restent lisibles hors-ligne. Une nouvelle requête de télémétrie nécessite une connexion.',
+    ),
+  },
+]);
 </script>
 
 <template>
   <div class="px-4 sm:px-6 lg:px-8 py-6 space-y-6 max-w-7xl mx-auto w-full">
-    <!-- Header with Provenance Badges -->
     <div class="flex flex-col lg:flex-row lg:items-end justify-between gap-4">
       <div class="max-w-3xl space-y-1.5">
         <div class="flex items-center gap-2 flex-wrap">
-          <AppBadge variant="satellite" icon="satellite_alt">
-            NASA Applied Sciences Program
-          </AppBadge>
-          <AppBadge variant="primary" icon="verified">
-            Calibré IRAD Nkolbisson
-          </AppBadge>
-          <span class="px-2.5 py-0.5 rounded-full bg-surface-container-high text-on-surface-variant font-caption text-caption">
-            v3.4.2 • 2025
-          </span>
+          <AppBadge variant="satellite" icon="satellite_alt">NASA POWER</AppBadge>
+          <AppBadge variant="primary" icon="verified">{{ tr('IRAD / FAO reference catalogue', 'Catalogue de référence IRAD / FAO') }}</AppBadge>
         </div>
         <h1 class="font-display-lg text-headline-lg lg:text-display-lg text-on-surface tracking-tight">
-          Données &amp; Sources Satellitaires
+          {{ appStore.t('nav.sources') }}
         </h1>
         <p class="font-body-md sm:font-body-lg text-body-md sm:text-body-lg text-on-surface-variant leading-relaxed">
-          Transparence sur les constellations d'observation spatiale de la NASA, les résolutions et les modèles agronomiques étalonnés au Cameroun.
+          {{
+            tr(
+              'Every number in the app traces back to a live API call. Here is exactly what was requested, where it came from and when.',
+              'Chaque chiffre de l’application provient d’un appel API réel. Voici précisément ce qui a été demandé, d’où cela vient et quand.',
+            )
+          }}
         </p>
       </div>
 
@@ -93,135 +93,117 @@ const faqs = [
         </div>
         <div>
           <div class="flex items-center gap-1.5">
-            <span class="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
-            <span class="font-label-md text-label-md text-on-surface font-semibold">Flux NASA Synchrone</span>
+            <span :class="['w-2 h-2 rounded-full', t ? 'bg-primary animate-pulse' : 'bg-outline']"></span>
+            <span class="font-label-md text-label-md text-on-surface font-semibold">
+              {{ t ? tr('Live NASA response', 'Réponse NASA en direct') : tr('No response yet', 'Aucune réponse') }}
+            </span>
           </div>
-          <p class="font-caption text-caption text-on-surface-variant mt-0.5">Dernière passe : il y a 14 min</p>
+          <p class="font-caption text-caption text-on-surface-variant mt-0.5">{{ fetchedLabel }}</p>
         </div>
       </div>
     </div>
 
-    <!-- Overview Statement + Station Picture Grid (12 cols) -->
-    <div class="grid grid-cols-1 md:grid-cols-12 gap-6">
-      <div class="md:col-span-8 bg-surface-container-lowest p-6 rounded-2xl border border-outline-variant/30 shadow-sm flex flex-col justify-between space-y-4">
+    <!-- Live values -->
+    <div v-if="t" class="grid grid-cols-1 md:grid-cols-12 gap-6">
+      <div class="md:col-span-8 bg-surface-container-lowest p-6 rounded-2xl border border-outline-variant/30 shadow-sm space-y-4">
         <div class="space-y-2 max-w-xl">
           <div class="flex items-center gap-2 text-secondary font-label-md text-label-md uppercase tracking-wider">
             <span class="material-symbols-outlined text-[18px]">biotech</span>
-            Méthodologie Agrométéorologique Hybride
+            {{ tr('Request provenance', 'Provenance de la requête') }}
           </div>
           <h2 class="font-headline-sm text-headline-sm text-on-surface leading-snug">
-            De l'orbite spatiale aux sillons d'Obala : relier la télédétection aux réalités locales.
+            {{ plot ? plot.name : tr('No plot selected', 'Aucune parcelle sélectionnée') }}
           </h2>
-          <p class="font-body-md text-body-md text-on-surface-variant leading-relaxed">
-            Les modèles AgroPredict ne reposent pas sur des extrapolations théoriques. Chaque flux satellitaire est corrigé statistiquement par les relevés des 14 stations automatiques de l'Institut de Recherche Agricole pour le Développement (IRAD) réparties entre le bassin du Mfoundi, la Lékié et l'Adamaoua.
+          <p class="font-body-md text-body-md text-on-surface-variant">
+            {{ t.location.lat.toFixed(4) }}, {{ t.location.lng.toFixed(4) }}
+            <span v-if="t.location.elevationM !== null"> · {{ t.location.elevationM }} m</span>
           </p>
         </div>
 
-        <div class="pt-4 border-t border-outline-variant/20 flex flex-wrap items-center gap-6">
-          <div>
-            <div class="font-display-lg text-headline-lg text-primary font-bold">20 ans</div>
-            <div class="font-caption text-caption text-on-surface-variant">Historique continu (2004–2024)</div>
+        <dl class="divide-y divide-outline-variant/20 text-caption">
+          <div v-for="row in provenanceRows" :key="row.label" class="flex flex-col sm:flex-row sm:items-start gap-1 sm:gap-4 py-2">
+            <dt class="text-on-surface-variant sm:w-44 shrink-0">{{ row.label }}</dt>
+            <dd class="text-on-surface font-body-bold break-words">{{ row.value }}</dd>
           </div>
-          <div>
-            <div class="font-display-lg text-headline-lg text-secondary font-bold">0.1° → 10m</div>
-            <div class="font-caption text-caption text-on-surface-variant">Downscaling relief SRTM</div>
-          </div>
-          <div>
-            <div class="font-display-lg text-headline-lg text-tertiary font-bold">98.2%</div>
-            <div class="font-caption text-caption text-on-surface-variant">Corrélation pluviomètres IRAD</div>
-          </div>
-        </div>
+        </dl>
+
+        <a :href="t.provenance.url" target="_blank" rel="noopener" class="inline-flex items-center gap-1 text-primary font-label-md text-caption hover:underline">
+          <span class="material-symbols-outlined text-[16px]">open_in_new</span>
+          {{ tr('Open the NASA POWER request', 'Ouvrir la requête NASA POWER') }}
+        </a>
       </div>
 
-      <!-- Station Image Card (4 cols) -->
-      <div class="md:col-span-4 bg-surface-container-lowest rounded-2xl overflow-hidden border border-outline-variant/30 shadow-sm flex flex-col">
-        <div class="relative h-44 w-full">
-          <img
-            class="w-full h-full object-cover"
-            alt="Station IRAD Nkolbisson"
-            src="https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=600&auto=format&fit=crop&q=80"
-          />
-          <div class="absolute inset-0 bg-gradient-to-t from-inverse-surface/85 via-transparent to-transparent flex items-end p-4">
-            <div class="text-inverse-on-surface">
-              <span class="text-[10px] font-semibold px-2 py-0.5 rounded bg-surface-container-lowest/30 backdrop-blur-sm">
-                Site de Calibration
-              </span>
-              <p class="font-body-bold text-label-lg mt-0.5">Station IRAD • Nkolbisson</p>
-            </div>
-          </div>
-        </div>
-        <div class="p-4 flex-1 flex flex-col justify-between space-y-2">
-          <p class="font-caption text-caption text-on-surface-variant">
-            Pluviomètres à augets basculeurs et sondes TDR capacitives enfouies à 10 cm, 20 cm et 40 cm pour la calibration fine des modèles.
-          </p>
-          <div class="flex items-center justify-between pt-1 text-primary font-body-bold text-caption">
-            <span>Lat: 3°52' N • Lon: 11°27' E</span>
-            <span class="material-symbols-outlined text-[16px]">location_on</span>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- 4 Core Constellations Grid -->
-    <div>
-      <h3 class="font-headline-sm text-headline-sm text-on-surface mb-3">
-        Constellations Satellitaires Mobilisées
-      </h3>
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div class="md:col-span-4 space-y-3">
         <div
-          v-for="c in constellations"
-          :key="c.name"
-          class="bg-surface-container-lowest p-5 rounded-2xl border border-outline-variant/30 shadow-xs flex flex-col justify-between space-y-3"
+          v-for="s in farmStore.satelliteSources"
+          :key="s.id"
+          class="bg-surface-container-lowest p-4 rounded-2xl border border-outline-variant/30 shadow-xs space-y-1.5"
         >
-          <div class="space-y-2">
-            <div class="w-10 h-10 rounded-xl bg-surface-container-low flex items-center justify-center" :class="c.color">
-              <span class="material-symbols-outlined text-[22px]">{{ c.icon }}</span>
-            </div>
-            <div>
-              <h4 class="font-body-bold text-label-lg text-on-surface">{{ c.name }}</h4>
-              <p class="font-caption text-[11px] text-on-surface-variant leading-tight">{{ c.fullname }}</p>
-            </div>
-            <p class="font-caption text-caption text-on-surface pt-1">
-              {{ c.metric }}
-            </p>
+          <div class="flex items-center justify-between gap-2">
+            <p class="font-body-bold text-caption text-on-surface">{{ s.name }}</p>
+            <AppBadge :variant="s.status === 'valid' ? 'primary' : 'secondary'">{{ s.status }}</AppBadge>
           </div>
-
-          <div class="pt-2 border-t border-outline-variant/20 text-[11px] text-on-surface-variant space-y-1">
-            <div class="flex justify-between">
-              <span>Résolution :</span>
-              <strong class="text-on-surface">{{ c.resolution }}</strong>
-            </div>
-            <div class="flex justify-between">
-              <span>Fréquence :</span>
-              <strong class="text-on-surface">{{ c.frequency }}</strong>
-            </div>
-          </div>
+          <p class="font-caption text-[11px] text-on-surface-variant leading-tight">{{ s.fullName }}</p>
+          <p class="font-headline-sm text-headline-sm text-primary font-bold">
+            {{ s.currentValue }} <span class="text-body-md font-normal text-on-surface-variant">{{ s.unit }}</span>
+          </p>
+          <p class="font-caption text-[11px] text-on-surface-variant">{{ s.metric }} · {{ s.lastPassAgo }}</p>
         </div>
       </div>
     </div>
 
-    <!-- FAQ Accordion / Cards -->
+    <div v-else class="bg-surface-container-lowest rounded-2xl border border-outline-variant/30 p-8 text-center space-y-3">
+      <span class="material-symbols-outlined text-primary text-[32px]">cloud_off</span>
+      <p class="font-body-md text-caption text-on-surface-variant">
+        {{ tr('No telemetry loaded yet for this plot.', 'Aucune télémétrie chargée pour cette parcelle.') }}
+      </p>
+      <AppButton variant="primary" size="sm" icon="refresh" @click="farmStore.loadTelemetry(true)">{{ tr('Fetch now', 'Récupérer') }}</AppButton>
+    </div>
+
+    <!-- Methodology -->
+    <div class="bg-surface-container-lowest p-6 rounded-2xl border border-outline-variant/30 shadow-sm space-y-3">
+      <h3 class="font-headline-sm text-headline-sm text-on-surface">{{ tr('How a recommendation is built', 'Comment une recommandation est construite') }}</h3>
+      <ol class="grid grid-cols-1 md:grid-cols-3 gap-4 text-caption">
+        <li class="p-4 rounded-xl bg-surface-container-low space-y-1">
+          <span class="font-body-bold text-primary">1.</span>
+          <p class="font-body-bold text-label-md text-on-surface">{{ tr('Pull the weather', 'Récupérer la météo') }}</p>
+          <p class="text-on-surface-variant">
+            {{ tr('Rain, temperature, ET₀ and soil wetness for the plot coordinates, plus 25 years of monthly normals.', 'Pluie, température, ET₀ et humidité du sol aux coordonnées de la parcelle, plus 25 ans de normales mensuelles.') }}
+          </p>
+        </li>
+        <li class="p-4 rounded-xl bg-surface-container-low space-y-1">
+          <span class="font-body-bold text-primary">2.</span>
+          <p class="font-body-bold text-label-md text-on-surface">{{ tr('Score the rotations', 'Noter les rotations') }}</p>
+          <p class="text-on-surface-variant">
+            {{ tr('Each rotation is scored on water security, climate match, soil fertility, diversification and margin.', 'Chaque rotation est notée sur la sécurité hydrique, l’adéquation climatique, la fertilité, la diversification et la marge.') }}
+          </p>
+        </li>
+        <li class="p-4 rounded-xl bg-surface-container-low space-y-1">
+          <span class="font-body-bold text-primary">3.</span>
+          <p class="font-body-bold text-label-md text-on-surface">{{ tr('Compare and decide', 'Comparer et décider') }}</p>
+          <p class="text-on-surface-variant">
+            {{ tr('Weight what matters to your farm, compare three rotations side by side, then open the detail sheet.', 'Pondérez ce qui compte pour votre ferme, comparez trois rotations, puis ouvrez la fiche détaillée.') }}
+          </p>
+        </li>
+      </ol>
+    </div>
+
+    <!-- FAQ -->
     <div class="bg-surface-container-lowest p-6 rounded-2xl border border-outline-variant/30 shadow-sm space-y-4">
-      <h3 class="font-headline-sm text-headline-sm text-on-surface">Foire Aux Questions Méthodologiques</h3>
+      <h3 class="font-headline-sm text-headline-sm text-on-surface">{{ tr('Frequently asked questions', 'Questions fréquentes') }}</h3>
       <div class="space-y-3">
-        <div
-          v-for="(faq, i) in faqs"
-          :key="i"
-          class="p-4 rounded-xl bg-surface-container-low space-y-1"
-        >
+        <div v-for="(faq, i) in faqs" :key="i" class="p-4 rounded-xl bg-surface-container-low space-y-1">
           <h4 class="font-body-bold text-label-lg text-primary flex items-center gap-2">
             <span class="material-symbols-outlined text-[18px]">help</span>
             {{ faq.q }}
           </h4>
-          <p class="font-body-md text-caption sm:text-body-md text-on-surface-variant pl-6">
-            {{ faq.a }}
-          </p>
+          <p class="font-body-md text-caption sm:text-body-md text-on-surface-variant pl-6">{{ faq.a }}</p>
         </div>
       </div>
     </div>
 
     <p class="font-caption text-caption text-center text-on-surface-variant">
-      Estimation indicative, pas une prévision de rendement.
+      {{ tr('Indicative estimation, not a yield forecast.', 'Estimation indicative, pas une prévision de rendement.') }}
     </p>
   </div>
 </template>

@@ -29,3 +29,6 @@ pnpm-debug.log*
 .env
 .env.*
 !.env.example
+
+# Local API data (SQLite database + JWT signing secret)
+server/data/

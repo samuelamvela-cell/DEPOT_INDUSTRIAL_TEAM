@@ -2,427 +2,247 @@
 import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { useFarmStore } from '@/stores/farmStore';
-import AppCard from '@/components/common/AppCard.vue';
+import { useAppStore } from '@/stores/appStore';
+import type { RotationScenario, ScoringWeights } from '@/types';
 import AppBadge from '@/components/common/AppBadge.vue';
 import AppButton from '@/components/common/AppButton.vue';
 
 const router = useRouter();
 const farmStore = useFarmStore();
+const appStore = useAppStore();
+const tr = appStore.tr;
 
-const weightsSum = computed(() => {
-  return (
-    farmStore.weights.waterSecurity +
-    farmStore.weights.fcfaMargin +
-    farmStore.weights.soilFertility +
-    farmStore.weights.foodSecurity
-  );
+const axes = computed(() => [
+  { key: 'waterSecurity', label: tr('Water', 'Eau') },
+  { key: 'climateMatch', label: tr('Climate', 'Climat') },
+  { key: 'soilFertility', label: tr('Soil', 'Sol') },
+  { key: 'foodDiversification', label: tr('Diversity', 'Diversité') },
+  { key: 'fcfaMargin', label: tr('Margin', 'Marge') },
+]);
+
+const colors = ['#3f6b3a', '#b07d2b', '#5a7d9a'];
+
+const weightsModel = computed<ScoringWeights>({
+  get: () => farmStore.weights,
+  set: (v) => farmStore.setWeights({ ...v }),
 });
 
-// Calculate radar polygon points from scores:
-// Pentagram geometry centered at (150, 150), radius 110
-// 1. Water (top): angle -90° (0 rad from vertical)
-// 2. Climate / Climat (top-right): angle -18°
-// 3. Soil / Sol (bottom-right): angle 54°
-// 4. Food / Sécurité (bottom-left): angle 126°
-// 5. Margin / FCFA (top-left): angle 198°
-const getPolygonPoints = (scores: {
-  waterSecurity: number;
-  climateMatch: number;
-  soilFertility: number;
-  foodDiversification: number;
-  fcfaMargin: number;
-}) => {
-  const cx = 150;
-  const cy = 150;
-  const maxR = 110;
+const totalWeight = computed(() => {
+  const w = farmStore.weights;
+  return w.waterSecurity + w.fcfaMargin + w.soilFertility + w.foodSecurity;
+});
 
-  // normalize 0..100
-  const r1 = (scores.waterSecurity / 100) * maxR;
-  const r2 = (scores.climateMatch / 100) * maxR;
-  const r3 = (scores.soilFertility / 100) * maxR;
-  const r4 = (scores.foodDiversification / 100) * maxR;
-  const r5 = (scores.fcfaMargin / 100) * maxR;
+const ranked = computed(() =>
+  [...farmStore.scenarios]
+    .map((s) => ({ scenario: s, score: farmStore.calculateWeightedScore(s) }))
+    .sort((a, b) => b.score - a.score),
+);
 
-  // Angles in radians
-  const a1 = -Math.PI / 2;
-  const a2 = -Math.PI / 2 + (2 * Math.PI) / 5;
-  const a3 = -Math.PI / 2 + (4 * Math.PI) / 5;
-  const a4 = -Math.PI / 2 + (6 * Math.PI) / 5;
-  const a5 = -Math.PI / 2 + (8 * Math.PI) / 5;
-
-  const p1 = `${(cx + r1 * Math.cos(a1)).toFixed(1)},${(cy + r1 * Math.sin(a1)).toFixed(1)}`;
-  const p2 = `${(cx + r2 * Math.cos(a2)).toFixed(1)},${(cy + r2 * Math.sin(a2)).toFixed(1)}`;
-  const p3 = `${(cx + r3 * Math.cos(a3)).toFixed(1)},${(cy + r3 * Math.sin(a3)).toFixed(1)}`;
-  const p4 = `${(cx + r4 * Math.cos(a4)).toFixed(1)},${(cy + r4 * Math.sin(a4)).toFixed(1)}`;
-  const p5 = `${(cx + r5 * Math.cos(a5)).toFixed(1)},${(cy + r5 * Math.sin(a5)).toFixed(1)}`;
-
-  return `${p1} ${p2} ${p3} ${p4} ${p5}`;
+const center = 130;
+const radius = 96;
+const pointFor = (index: number, value: number) => {
+  const angle = (Math.PI * 2 * index) / 5 - Math.PI / 2;
+  const r = (Math.max(0, Math.min(100, value)) / 100) * radius;
+  return `${center + Math.cos(angle) * r},${center + Math.sin(angle) * r}`;
 };
 
-const goToDetail = (id: string) => {
-  router.push(`/detail/${id}`);
-};
+const polygonFor = (s: RotationScenario) =>
+  axes.value
+    .map((axis, i) => pointFor(i, (s.radarScores as unknown as Record<string, number>)[axis.key] || 0))
+    .join(' ');
+
+const gridRings = [25, 50, 75, 100].map((pct) =>
+  axes.value.map((_, i) => pointFor(i, pct)).join(' '),
+);
+
+const axisEnds = axes.value.map((_, i) => pointFor(i, 100).split(',').map(Number));
+
+const fmtFcfa = (v: number) =>
+  new Intl.NumberFormat(appStore.language === 'fr' ? 'fr-FR' : 'en-GB', { maximumFractionDigits: 0 }).format(v);
+
+const slider = (key: keyof ScoringWeights, label: string, icon: string) => ({ key, label, icon });
+
+const sliders = computed(() => [
+  slider('waterSecurity', tr('Water security', 'Sécurité hydrique'), 'water_drop'),
+  slider('fcfaMargin', tr('Net margin', 'Marge nette'), 'payments'),
+  slider('soilFertility', tr('Soil fertility', 'Fertilité du sol'), 'compost'),
+  slider('foodSecurity', tr('Food diversification', 'Diversification alimentaire'), 'nutrition'),
+]);
+
+const hasScenarios = computed(() => farmStore.scenarios.length > 0);
 </script>
 
 <template>
   <div class="px-4 sm:px-6 lg:px-8 py-6 space-y-6 max-w-7xl mx-auto w-full">
-    <!-- Header Section -->
-    <div class="flex flex-col lg:flex-row lg:items-end justify-between gap-4">
-      <div class="space-y-1 max-w-3xl">
-        <div class="flex flex-wrap items-center gap-2 text-caption text-on-surface-variant">
-          <AppBadge variant="primary" icon="analytics">Arbitrage Multi-Critères</AppBadge>
-          <span>•</span>
-          <AppBadge variant="satellite" icon="satellite_alt">NASA SMAP + IMERG (20 ans)</AppBadge>
-          <span>•</span>
-          <span class="font-body-bold text-on-surface">Campagne 2025/2026</span>
+    <div class="flex flex-col md:flex-row md:items-end justify-between gap-4">
+      <div>
+        <div class="flex items-center gap-2 text-primary font-label-md text-label-md tracking-wider uppercase mb-1">
+          <span class="material-symbols-outlined text-[18px]">tune</span>
+          <span>{{ tr('Decision support', 'Aide à la décision') }}</span>
         </div>
-        <h1 class="font-display-lg text-headline-lg lg:text-display-lg text-on-surface tracking-tight">
-          Comparaison &amp; Arbitrage des Scénarios
-        </h1>
-        <p class="font-body-md sm:font-body-lg text-body-md sm:text-body-lg text-on-surface-variant">
-          Classement multicritère fondé sur les modèles climatiques NASA et l'économie locale en FCFA pour la parcelle d'Obala (3.2 ha).
+        <h1 class="font-headline-lg text-headline-lg text-on-surface tracking-tight">{{ appStore.t('nav.decision') }}</h1>
+        <p class="font-body-md text-body-md text-on-surface-variant mt-1 max-w-2xl">
+          {{ tr('Weight what matters for your farm: the ranking recomputes instantly from the live rotation scores.', 'Pondérez ce qui compte pour votre ferme : le classement se recalcule instantanément à partir des scores réels.') }}
         </p>
       </div>
-
-      <div class="flex items-center gap-3 self-start lg:self-end">
-        <button
-          type="button"
-          class="inline-flex items-center gap-2 h-12 px-4 rounded-xl bg-surface-container-high hover:bg-surface-container text-on-surface font-body-bold text-label-lg transition-colors shadow-xs cursor-pointer"
-          @click="farmStore.resetWeights"
-        >
-          <span class="material-symbols-outlined text-[20px] text-primary">restart_alt</span>
-          <span>Pondération Recommandée</span>
-        </button>
-      </div>
+      <AppBadge variant="satellite" icon="insights">{{ tr('Live scoring', 'Notation en direct') }}</AppBadge>
     </div>
 
-    <!-- Section 1: Dynamic Criteria Weighting Engine -->
-    <div class="bg-surface-container-lowest rounded-2xl p-5 sm:p-6 border border-outline-variant/30 shadow-sm space-y-4">
-      <div class="flex flex-col md:flex-row md:items-center justify-between gap-2">
-        <div>
-          <div class="flex items-center gap-2">
-            <span class="material-symbols-outlined text-secondary text-[22px]">tune</span>
-            <h2 class="font-headline-sm text-headline-sm text-on-surface">
-              Ce qui compte le plus pour vous (Pondération des critères)
-            </h2>
+    <div v-if="farmStore.loadingTelemetry" class="bg-surface-container-lowest rounded-2xl border border-outline-variant/30 p-8 text-center">
+      <span class="material-symbols-outlined animate-spin text-[28px] text-primary">progress_activity</span>
+      <p class="font-body-md text-caption text-on-surface-variant mt-2">{{ tr('Computing rotations…', 'Calcul des rotations…') }}</p>
+    </div>
+
+    <div v-else-if="!hasScenarios" class="bg-surface-container-lowest rounded-2xl border border-outline-variant/30 p-8 text-center space-y-3">
+      <span class="material-symbols-outlined text-primary text-[32px]">rule</span>
+      <p class="font-body-md text-caption text-on-surface-variant">
+        {{ tr('No rotation can be scored yet: add a plot and let the NASA telemetry load.', 'Aucune rotation ne peut encore être notée : ajoutez une parcelle et laissez charger la télémétrie NASA.') }}
+      </p>
+      <AppButton variant="primary" size="sm" icon="add_location_alt" @click="router.push('/exploitation')">{{ tr('Go to my plots', 'Mes parcelles') }}</AppButton>
+    </div>
+
+    <div v-else class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+      <!-- Weights + radar -->
+      <div class="lg:col-span-5 space-y-6">
+        <div class="bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/30 shadow-sm space-y-4">
+          <div class="flex items-center justify-between">
+            <h2 class="font-headline-sm text-headline-sm text-on-surface">{{ tr('Your priorities', 'Vos priorités') }}</h2>
+            <button type="button" class="font-caption text-caption text-primary hover:underline cursor-pointer" @click="farmStore.resetWeights()">
+              {{ tr('Reset', 'Réinitialiser') }}
+            </button>
           </div>
-          <p class="font-body-md text-caption sm:text-body-md text-on-surface-variant mt-0.5">
-            Ajustez l'importance de chaque levier pour recalculer instantanément le classement adapté à votre trésorerie et vos risques.
+
+          <div v-for="s in sliders" :key="s.key" class="space-y-1">
+            <div class="flex items-center justify-between font-label-md text-label-md">
+              <span class="flex items-center gap-1.5 text-on-surface">
+                <span class="material-symbols-outlined text-[18px] text-primary">{{ s.icon }}</span>
+                {{ s.label }}
+              </span>
+              <strong class="text-primary">{{ weightsModel[s.key] }}%</strong>
+            </div>
+            <input v-model.number="weightsModel[s.key]" type="range" min="0" max="100" step="5" class="w-full accent-primary cursor-pointer" />
+          </div>
+
+          <p :class="['text-caption font-caption', totalWeight === 100 ? 'text-on-surface-variant' : 'text-error']">
+            {{ tr('Total', 'Total') }} : {{ totalWeight }}%
+            <span v-if="totalWeight !== 100"> — {{ tr('scores are normalised to this total', 'les scores sont normalisés sur ce total') }}</span>
           </p>
         </div>
 
-        <div class="inline-flex items-center gap-2 self-start md:self-auto bg-surface-container px-3 py-1.5 rounded-full text-caption font-label-md text-on-surface">
-          <span>Total pondéré :</span>
-          <span :class="['font-body-bold', weightsSum === 100 ? 'text-primary' : 'text-secondary']">
-            {{ weightsSum }}%
-          </span>
-          <span class="material-symbols-outlined text-[16px] text-primary">check_circle</span>
-        </div>
-      </div>
-
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 pt-1">
-        <!-- Slider 1: Eau -->
-        <div class="bg-surface-container-low/70 rounded-xl p-4 space-y-2">
-          <div class="flex items-center justify-between">
-            <span class="inline-flex items-center gap-1.5 font-label-lg text-label-lg text-on-surface">
-              <span class="material-symbols-outlined text-tertiary text-[18px]">water_drop</span>
-              Sécurité hydrique
-            </span>
-            <span class="font-body-bold text-label-lg text-tertiary bg-tertiary-fixed px-2 py-0.5 rounded-full">
-              {{ farmStore.weights.waterSecurity }}%
-            </span>
-          </div>
-          <p class="font-caption text-caption text-on-surface-variant">Résistance aux poches de sécheresse et stress NASA SMAP.</p>
-          <input
-            v-model.number="farmStore.weights.waterSecurity"
-            class="w-full h-2 rounded-lg bg-surface-container-highest accent-primary cursor-pointer"
-            type="range"
-            min="10"
-            max="60"
-          />
-        </div>
-
-        <!-- Slider 2: FCFA -->
-        <div class="bg-surface-container-low/70 rounded-xl p-4 space-y-2">
-          <div class="flex items-center justify-between">
-            <span class="inline-flex items-center gap-1.5 font-label-lg text-label-lg text-on-surface">
-              <span class="material-symbols-outlined text-secondary text-[18px]">payments</span>
-              Rentabilité en FCFA
-            </span>
-            <span class="font-body-bold text-label-lg text-secondary bg-secondary-fixed px-2 py-0.5 rounded-full">
-              {{ farmStore.weights.fcfaMargin }}%
-            </span>
-          </div>
-          <p class="font-caption text-caption text-on-surface-variant">Marges brutes dégagées par hectare aux marchés urbains.</p>
-          <input
-            v-model.number="farmStore.weights.fcfaMargin"
-            class="w-full h-2 rounded-lg bg-surface-container-highest accent-secondary cursor-pointer"
-            type="range"
-            min="10"
-            max="60"
-          />
-        </div>
-
-        <!-- Slider 3: Sol -->
-        <div class="bg-surface-container-low/70 rounded-xl p-4 space-y-2">
-          <div class="flex items-center justify-between">
-            <span class="inline-flex items-center gap-1.5 font-label-lg text-label-lg text-on-surface">
-              <span class="material-symbols-outlined text-primary text-[18px]">compost</span>
-              Fertilité du sol
-            </span>
-            <span class="font-body-bold text-label-lg text-primary bg-primary-fixed px-2 py-0.5 rounded-full">
-              {{ farmStore.weights.soilFertility }}%
-            </span>
-          </div>
-          <p class="font-caption text-caption text-on-surface-variant">Fixation biologique de l'azote N₂ et protection ferrallitique.</p>
-          <input
-            v-model.number="farmStore.weights.soilFertility"
-            class="w-full h-2 rounded-lg bg-surface-container-highest accent-primary cursor-pointer"
-            type="range"
-            min="10"
-            max="60"
-          />
-        </div>
-
-        <!-- Slider 4: Sécurité vivrière -->
-        <div class="bg-surface-container-low/70 rounded-xl p-4 space-y-2">
-          <div class="flex items-center justify-between">
-            <span class="inline-flex items-center gap-1.5 font-label-lg text-label-lg text-on-surface">
-              <span class="material-symbols-outlined text-on-surface-variant text-[18px]">psychiatry</span>
-              Sécurité alimentaire
-            </span>
-            <span class="font-body-bold text-label-lg text-on-surface bg-surface-container px-2 py-0.5 rounded-full">
-              {{ farmStore.weights.foodSecurity }}%
-            </span>
-          </div>
-          <p class="font-caption text-caption text-on-surface-variant">Disponibilité garantie en maïs et tubercules de garde.</p>
-          <input
-            v-model.number="farmStore.weights.foodSecurity"
-            class="w-full h-2 rounded-lg bg-surface-container-highest accent-primary cursor-pointer"
-            type="range"
-            min="10"
-            max="60"
-          />
-        </div>
-      </div>
-    </div>
-
-    <!-- Section 2: 3 Comparison Cards Grid -->
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <div
-        v-for="s in farmStore.scenarios"
-        :key="s.id"
-        :class="[
-          'rounded-2xl p-5 sm:p-6 flex flex-col justify-between transition-all relative',
-          s.isRecommended
-            ? 'bg-surface-container-lowest border-2 border-secondary-container shadow-md ring-2 ring-secondary-container/20'
-            : 'bg-surface-container-lowest border border-outline-variant/30 shadow-xs hover:shadow-sm',
-        ]"
-      >
-        <div class="space-y-4">
-          <div class="flex items-center justify-between">
-            <span
-              :class="[
-                'inline-flex items-center gap-1.5 px-3 py-1 rounded-full font-body-bold text-caption',
-                s.isRecommended
-                  ? 'bg-secondary-fixed text-on-secondary-fixed'
-                  : 'bg-surface-container-high text-on-surface-variant',
-              ]"
-            >
-              <span v-if="s.isRecommended" class="material-symbols-outlined text-[16px]">star</span>
-              {{ s.isRecommended ? 'Option A • Recommandée' : `Option ${s.tag}` }}
-            </span>
-            <span class="font-label-md text-caption text-on-surface-variant bg-surface-container px-2 py-0.5 rounded">
-              Cycle 12 mois
-            </span>
-          </div>
-
-          <div>
-            <h3 class="font-headline-sm text-headline-sm text-on-surface font-bold">
-              {{ s.name }}
-            </h3>
-            <p class="font-caption text-caption text-on-surface-variant mt-1">
-              {{ s.subtitle }}
-            </p>
-          </div>
-
-          <!-- Dynamic Score Gauge Row -->
-          <div class="flex items-center justify-between p-3 bg-surface-container-low rounded-xl">
-            <div class="flex items-center gap-3">
-              <span class="font-display-lg text-headline-lg font-bold text-primary">
-                {{ farmStore.calculateWeightedScore(s) }}
-              </span>
-              <div>
-                <span class="font-label-md text-caption text-on-surface-variant block">Score AgroPredict</span>
-                <span class="font-body-bold text-caption text-primary">
-                  {{ s.isRecommended ? 'Équilibre Optimal' : 'Vulnérable' }}
-                </span>
-              </div>
-            </div>
-            <span class="material-symbols-outlined text-[24px] text-primary">
-              {{ s.isRecommended ? 'verified' : 'analytics' }}
-            </span>
-          </div>
-
-          <!-- Metrics Matrix -->
-          <div class="space-y-1.5 pt-1 text-label-md">
-            <div class="flex justify-between items-baseline py-1 border-b border-outline-variant/20">
-              <span class="text-on-surface-variant">Marge nette estimée</span>
-              <span class="font-body-bold text-label-lg text-secondary">
-                {{ s.netMarginFcfaHa.toLocaleString('fr-FR') }} FCFA/ha
-              </span>
-            </div>
-
-            <div class="flex justify-between items-baseline py-1 border-b border-outline-variant/20">
-              <span class="text-on-surface-variant">Bilan fertilité sol</span>
-              <span
-                :class="[
-                  'font-body-bold text-label-lg',
-                  s.nitrogenBalanceKgHa > 0 ? 'text-primary' : 'text-error',
-                ]"
-              >
-                {{ s.nitrogenBalanceKgHa > 0 ? `+${s.nitrogenBalanceKgHa}` : s.nitrogenBalanceKgHa }} kg N/ha
-              </span>
-            </div>
-
-            <div class="flex justify-between items-baseline py-1 border-b border-outline-variant/20">
-              <span class="text-on-surface-variant">Risque de choc climatique</span>
-              <span
-                :class="[
-                  'font-body-bold text-label-lg',
-                  s.failureRiskPercent <= 15 ? 'text-primary' : 'text-error',
-                ]"
-              >
-                {{ s.failureRiskPercent }}%
-              </span>
-            </div>
-          </div>
-        </div>
-
-        <div class="pt-5 mt-4 border-t border-outline-variant/20">
-          <AppButton
-            :variant="s.isRecommended ? 'primary' : 'secondary'"
-            size="md"
-            :full-width="true"
-            icon-right="arrow_forward"
-            @click="goToDetail(s.id)"
-          >
-            {{ s.isRecommended ? 'Choisir ce Scénario' : 'Détail du Scénario' }}
-          </AppButton>
-        </div>
-      </div>
-    </div>
-
-    <!-- Section 3: Pentagonal Radar Chart (SVG Tracé) -->
-    <div class="bg-surface-container-lowest rounded-2xl p-5 sm:p-6 border border-outline-variant/30 shadow-sm space-y-4">
-      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-        <div>
-          <span class="inline-flex items-center gap-1 text-tertiary text-caption font-label-md uppercase tracking-wider">
-            <span class="material-symbols-outlined text-[16px]">radar</span>
-            Modélisation Pentadimensionnelle
-          </span>
-          <h3 class="font-headline-sm text-headline-sm text-on-surface">Radar des Arbitrages Stratégiques</h3>
-        </div>
-        <AppBadge variant="satellite" icon="public">NASA POWER &amp; SMAP</AppBadge>
-      </div>
-
-      <div class="flex flex-col lg:flex-row items-center justify-center gap-8 py-4">
-        <!-- SVG Radar -->
-        <div class="relative w-full max-w-[420px] aspect-square flex items-center justify-center">
-          <svg class="w-full h-full overflow-visible" viewBox="-20 -20 340 340">
-            <!-- Concentric Grid Pentagons (20%, 40%, 60%, 80%, 100%) -->
-            <polygon class="text-surface-container-highest" fill="none" stroke="currentColor" stroke-width="1" points="150,128 171,143 163,167 137,167 129,143" />
-            <polygon class="text-surface-container-highest" fill="none" stroke="currentColor" stroke-width="1" points="150,106 192,137 176,184 124,184 108,137" />
-            <polygon class="text-surface-container-highest" fill="none" stroke="currentColor" stroke-width="1" points="150,84 213,130 189,201 111,201 87,130" />
-            <polygon class="text-surface-container-highest" fill="none" stroke="currentColor" stroke-width="1" points="150,62 234,124 202,218 98,218 66,124" />
-            <polygon class="text-surface-container-high" fill="none" stroke="currentColor" stroke-width="1.5" points="150,40 255,117 215,235 85,235 45,117" />
-
-            <!-- Axis radiating from center (150, 150) -->
-            <line x1="150" y1="150" x2="150" y2="40" stroke="currentColor" class="text-surface-container-highest" stroke-dasharray="2,2" />
-            <line x1="150" y1="150" x2="255" y2="117" stroke="currentColor" class="text-surface-container-highest" stroke-dasharray="2,2" />
-            <line x1="150" y1="150" x2="215" y2="235" stroke="currentColor" class="text-surface-container-highest" stroke-dasharray="2,2" />
-            <line x1="150" y1="150" x2="85" y2="235" stroke="currentColor" class="text-surface-container-highest" stroke-dasharray="2,2" />
-            <line x1="150" y1="150" x2="45" y2="117" stroke="currentColor" class="text-surface-container-highest" stroke-dasharray="2,2" />
-
-            <!-- Labels -->
-            <text x="150" y="24" text-anchor="middle" class="fill-on-surface font-label-md text-[11px] font-bold">
-              1. Disponibilité Eau
-            </text>
-            <text x="270" y="118" text-anchor="start" class="fill-on-surface font-label-md text-[11px] font-bold">
-              2. Climat NASA
-            </text>
-            <text x="225" y="255" text-anchor="start" class="fill-on-surface font-label-md text-[11px] font-bold">
-              3. Fertilité Sol
-            </text>
-            <text x="75" y="255" text-anchor="end" class="fill-on-surface font-label-md text-[11px] font-bold">
-              4. Sécurité Foyer
-            </text>
-            <text x="30" y="118" text-anchor="end" class="fill-on-surface font-label-md text-[11px] font-bold">
-              5. Marge FCFA
-            </text>
-
-            <!-- Scenario C Polygon (Dotted Grey) -->
-            <polygon
-              :points="getPolygonPoints(farmStore.scenarios[2].radarScores)"
-              class="text-outline"
-              fill="rgba(112, 122, 111, 0.15)"
+        <div class="bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/30 shadow-sm space-y-2">
+          <h2 class="font-headline-sm text-headline-sm text-on-surface">{{ tr('Profile comparison', 'Comparaison des profils') }}</h2>
+          <svg viewBox="0 0 260 260" class="w-full max-w-[300px] mx-auto overflow-visible">
+            <polygon v-for="(ring, i) in gridRings" :key="`ring-${i}`" :points="ring" fill="none" stroke="currentColor" stroke-opacity="0.15" />
+            <line
+              v-for="(end, i) in axisEnds"
+              :key="`axis-${i}`"
+              :x1="center"
+              :y1="center"
+              :x2="end[0]"
+              :y2="end[1]"
               stroke="currentColor"
-              stroke-width="1.5"
-              stroke-dasharray="4,4"
+              stroke-opacity="0.15"
             />
-
-            <!-- Scenario B Polygon (Blue) -->
             <polygon
-              :points="getPolygonPoints(farmStore.scenarios[1].radarScores)"
-              class="text-tertiary"
-              fill="rgba(0, 70, 134, 0.2)"
-              stroke="currentColor"
+              v-for="(s, i) in farmStore.scenarios"
+              :key="s.id"
+              :points="polygonFor(s)"
+              :fill="colors[i % colors.length]"
+              fill-opacity="0.18"
+              :stroke="colors[i % colors.length]"
               stroke-width="2"
             />
-
-            <!-- Scenario A Polygon (Green / Recommended) -->
-            <polygon
-              :points="getPolygonPoints(farmStore.scenarios[0].radarScores)"
-              class="text-primary-container"
-              fill="rgba(31, 107, 58, 0.3)"
-              stroke="currentColor"
-              stroke-width="3"
-            />
+            <text
+              v-for="(axis, i) in axes"
+              :key="`label-${i}`"
+              :x="center + (axisEnds[i][0] - center) * 1.12"
+              :y="center + (axisEnds[i][1] - center) * 1.12"
+              text-anchor="middle"
+              dominant-baseline="middle"
+              class="fill-current text-[10px] font-semibold"
+            >
+              {{ axis.label }}
+            </text>
           </svg>
-        </div>
 
-        <!-- Radar Legend & Readout -->
-        <div class="space-y-4 max-w-sm">
-          <div class="p-3.5 rounded-xl bg-surface-container-low border border-primary flex items-start gap-3">
-            <span class="w-3.5 h-3.5 rounded-full bg-primary-container shrink-0 mt-1"></span>
-            <div>
-              <p class="font-body-bold text-label-lg text-primary">Option A (Recommandée)</p>
-              <p class="font-caption text-caption text-on-surface-variant">
-                Enveloppe polygonale la plus étendue et stable, garantissant 92% d'adéquation hydrique et 95% de fertilité du sol.
-              </p>
-            </div>
-          </div>
-
-          <div class="p-3.5 rounded-xl bg-surface-container-low border border-tertiary/40 flex items-start gap-3">
-            <span class="w-3.5 h-3.5 rounded-full bg-tertiary shrink-0 mt-1"></span>
-            <div>
-              <p class="font-body-bold text-label-lg text-tertiary">Option B (Spéculative)</p>
-              <p class="font-caption text-caption text-on-surface-variant">
-                Pointe maximale sur la marge en FCFA (95%), mais écrasement critique sur la sécurité en eau (42%).
-              </p>
-            </div>
-          </div>
-
-          <div class="p-3.5 rounded-xl bg-surface-container-low border border-outline/40 flex items-start gap-3">
-            <span class="w-3.5 h-3.5 rounded-full bg-outline shrink-0 mt-1"></span>
-            <div>
-              <p class="font-body-bold text-label-lg text-on-surface">Option C (Monoculture)</p>
-              <p class="font-caption text-caption text-on-surface-variant">
-                Polygone rétracté au centre. Forte chute de la fertilité minérale (18%) et vulnérabilité maximale.
-              </p>
-            </div>
+          <div class="flex flex-wrap gap-3 justify-center pt-1">
+            <span v-for="(s, i) in farmStore.scenarios" :key="`legend-${s.id}`" class="flex items-center gap-1.5 font-caption text-caption text-on-surface-variant">
+              <span class="w-2.5 h-2.5 rounded-full" :style="{ backgroundColor: colors[i % colors.length] }"></span>
+              {{ tr('Scenario', 'Scénario') }} {{ s.tag }}
+            </span>
           </div>
         </div>
+      </div>
+
+      <!-- Ranking -->
+      <div class="lg:col-span-7 space-y-3">
+        <div class="flex items-center justify-between px-1">
+          <h2 class="font-headline-sm text-headline-sm text-on-surface">{{ tr('Ranking with your weights', 'Classement selon vos pondérations') }}</h2>
+          <span class="font-caption text-caption text-on-surface-variant">{{ farmStore.scenarios.length }} {{ tr('rotations', 'rotations') }}</span>
+        </div>
+
+        <div
+          v-for="({ scenario, score }, index) in ranked"
+          :key="scenario.id"
+          class="bg-surface-container-lowest rounded-2xl border shadow-xs p-4 sm:p-5 space-y-3"
+          :class="index === 0 ? 'border-primary ring-1 ring-primary/30' : 'border-outline-variant/30'"
+        >
+          <div class="flex items-start justify-between gap-3">
+            <div class="flex items-start gap-3 min-w-0">
+              <div
+                class="w-10 h-10 rounded-xl flex items-center justify-center font-body-bold text-label-lg shrink-0"
+                :class="index === 0 ? 'bg-primary text-on-primary' : 'bg-surface-container-high text-on-surface'"
+              >
+                {{ scenario.tag }}
+              </div>
+              <div class="min-w-0">
+                <div class="flex items-center gap-2 flex-wrap">
+                  <h3 class="font-body-bold text-label-lg text-on-surface">{{ tr('Scenario', 'Scénario') }} {{ scenario.tag }}</h3>
+                  <AppBadge v-if="index === 0" variant="primary" icon="workspace_premium">{{ tr('Best for you', 'Meilleur pour vous') }}</AppBadge>
+                  <AppBadge v-if="scenario.isRecommended" variant="secondary" icon="science">{{ tr('Engine pick', 'Choix du moteur') }}</AppBadge>
+                </div>
+                <p class="font-caption text-caption text-on-surface-variant mt-0.5 truncate">{{ scenario.name }}</p>
+              </div>
+            </div>
+            <div class="text-right shrink-0">
+              <p class="font-headline-sm text-headline-sm font-bold" :class="index === 0 ? 'text-primary' : 'text-on-surface'">{{ score }}<span class="text-caption font-normal text-on-surface-variant">/100</span></p>
+              <p class="font-caption text-[11px] text-on-surface-variant">{{ tr('engine', 'moteur') }} {{ scenario.overallScore }}</p>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <div v-for="axis in axes" :key="axis.key" class="p-2 rounded-lg bg-surface-container-low">
+              <p class="font-caption text-[11px] text-on-surface-variant">{{ axis.label }}</p>
+              <div class="flex items-center gap-1.5 mt-0.5">
+                <span class="font-body-bold text-caption text-on-surface">
+                  {{ Math.round((scenario.radarScores as unknown as Record<string, number>)[axis.key] || 0) }}
+                </span>
+                <div class="flex-1 h-1.5 rounded-full bg-surface-container-highest overflow-hidden">
+                  <div class="h-full rounded-full bg-primary" :style="{ width: `${(scenario.radarScores as unknown as Record<string, number>)[axis.key] || 0}%` }"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-caption text-on-surface-variant">
+            <span>{{ tr('Margin', 'Marge') }} : <strong class="text-on-surface">{{ fmtFcfa(scenario.netMarginFcfaHa) }} FCFA/ha</strong></span>
+            <span>{{ tr('Water stress', 'Stress hydrique') }} : <strong class="text-on-surface">{{ scenario.waterStressPercent }}%</strong></span>
+            <span>{{ tr('Failure risk', 'Risque d’échec') }} : <strong class="text-on-surface">{{ scenario.failureRiskPercent }}%</strong></span>
+          </div>
+
+          <div class="flex gap-2">
+            <AppButton variant="primary" size="sm" icon="open_in_new" @click="router.push(`/detail/${scenario.id}`)">
+              {{ tr('Open the sheet', 'Ouvrir la fiche') }}
+            </AppButton>
+            <AppButton variant="secondary" size="sm" icon="compare_arrows" @click="router.push('/scenarios')">
+              {{ tr('Compare', 'Comparer') }}
+            </AppButton>
+          </div>
+        </div>
+
+        <p class="font-caption text-caption text-center text-on-surface-variant pt-2">
+          {{ tr('Indicative estimation, not a yield forecast.', 'Estimation indicative, pas une prévision de rendement.') }}
+        </p>
       </div>
     </div>
   </div>

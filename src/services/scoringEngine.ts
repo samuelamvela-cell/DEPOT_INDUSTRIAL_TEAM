@@ -1,7 +1,67 @@
-import { Crop, ScoringWeights } from '@/types';
+import type { ClimateTelemetry, Crop, EngineFinding, ScoringWeights } from '@/types';
+
+/**
+ * Feature extraction layer — normalises the rotation plus the live NASA POWER
+ * telemetry into engine-ready features, so the scoring rules never touch raw
+ * API payloads directly.
+ */
+export interface ScoringFeatures {
+  nitrogenFixationSum: number;
+  hasLegume: boolean;
+  hasCereal: boolean;
+  hasTubercule: boolean;
+  hasMaraichage: boolean;
+  hasMonoculture: boolean;
+  waterNeedAverage: number;
+  waterNeedTotalMm: number;
+  rainSupplyMm: number | null;
+  soilMoisturePercent: number | null;
+  rainfallAnomalyPercent: number | null;
+  drySpellWarning: boolean;
+}
+
+export interface PhaseLike {
+  crop: Crop;
+  seasonIndex: number;
+  rainSupplyMm?: number | null;
+}
+
+export function extractScoringFeatures(
+  phases: PhaseLike[],
+  telemetry?: ClimateTelemetry | null,
+): ScoringFeatures {
+  const families = phases.map((p) => p.crop.family);
+  const hasMonoculture = families.some((fam, idx) => idx > 0 && fam === families[idx - 1]);
+  const waterNeeds = phases.map((p) => p.crop.waterNeedMm);
+  const rainSupplies = phases
+    .map((p) => p.rainSupplyMm)
+    .filter((v): v is number => typeof v === 'number' && isFinite(v));
+
+  return {
+    nitrogenFixationSum: phases.reduce((acc, p) => acc + p.crop.nitrogenFixationKgHa, 0),
+    hasLegume: families.includes('legumineuse'),
+    hasCereal: families.includes('cereale'),
+    hasTubercule: families.includes('tubercule'),
+    hasMaraichage: families.includes('maraichage'),
+    hasMonoculture,
+    waterNeedAverage: waterNeeds.length
+      ? waterNeeds.reduce((a, b) => a + b, 0) / waterNeeds.length
+      : 0,
+    waterNeedTotalMm: waterNeeds.reduce((a, b) => a + b, 0),
+    rainSupplyMm: rainSupplies.length ? rainSupplies.reduce((a, b) => a + b, 0) : null,
+    soilMoisturePercent: telemetry?.soilMoistureSurfacePercent ?? null,
+    rainfallAnomalyPercent: telemetry?.rainfallAnomalyPercent ?? null,
+    drySpellWarning: Boolean(telemetry?.drySpell?.warning),
+  };
+}
+
+export interface ScoringEngineInput {
+  features: ScoringFeatures;
+  weights: ScoringWeights;
+}
 
 export interface ScenarioEvaluationResult {
-  score: number; // 0 to 100
+  score: number;
   nitrogenBalanceKgHa: number;
   waterStressRiskPercent: number;
   failureRiskPercent: number;
@@ -13,19 +73,23 @@ export interface ScenarioEvaluationResult {
     foodDiversification: number;
     fcfaMargin: number;
   };
-  strengths: string[];
-  weaknesses: string[];
-  agronomicRecommendation: string;
+  strengths: EngineFinding[];
+  weaknesses: EngineFinding[];
+  agronomicRecommendation: EngineFinding;
 }
 
+const clamp = (v: number, min = 0, max = 100) => Math.max(min, Math.min(max, v));
+
 /**
- * Pure Agronomic Scoring Engine based on IRAD (Cameroon) rules and NASA Earth Observation indicators
+ * Pure agronomic scoring engine based on IRAD (Cameroon) rotation rules and the
+ * NASA POWER water balance. Every input is measured or published reference data;
+ * the rules themselves are agronomic heuristics and are returned as codes so the
+ * UI can present them in the active language.
  */
-export function evaluateRotationScenario(
-  phases: { crop: Crop; seasonIndex: number }[],
-  weights: ScoringWeights = { waterSecurity: 35, fcfaMargin: 30, soilFertility: 20, foodSecurity: 15 }
-): ScenarioEvaluationResult {
-  if (!phases || phases.length === 0) {
+export function evaluateRotationScenario(input: ScoringEngineInput): ScenarioEvaluationResult {
+  const { features, weights } = input;
+
+  if (!features || features.waterNeedTotalMm === 0) {
     return {
       score: 0,
       nitrogenBalanceKgHa: 0,
@@ -34,127 +98,128 @@ export function evaluateRotationScenario(
       pestRiskLevel: 'eleve',
       radarScores: { waterSecurity: 0, climateMatch: 0, soilFertility: 0, foodDiversification: 0, fcfaMargin: 0 },
       strengths: [],
-      weaknesses: ['Aucune culture renseignée dans le scénario.'],
-      agronomicRecommendation: 'Ajoutez au moins deux cultures en succession pour évaluer la rotation.',
+      weaknesses: [{ code: 'empty.phases' }],
+      agronomicRecommendation: { code: 'recommend.empty' },
     };
   }
 
-  const strengths: string[] = [];
-  const weaknesses: string[] = [];
+  const strengths: EngineFinding[] = [];
+  const weaknesses: EngineFinding[] = [];
 
-  const families = phases.map((p) => p.crop.family);
-  const uniqueFamilies = new Set(families);
-  const hasMonoculture = families.some((fam, idx) => idx > 0 && fam === families[idx - 1]);
-  const hasLegume = families.includes('legumineuse');
-  const hasCereal = families.includes('cereale');
-  const hasTubercule = families.includes('tubercule');
-  const hasMaraichage = families.includes('maraichage');
+  const { hasLegume, hasCereal, hasTubercule, hasMaraichage, hasMonoculture, nitrogenFixationSum } = features;
 
-  // 1. Calculate nitrogen balance with inter-season organic restoration
-  const rawCropN = phases.reduce((acc, p) => acc + p.crop.nitrogenFixationKgHa, 0);
-  // Interseason mulching & biological break bonus if legume present
+  // 1. Nitrogen balance: crop offtake + symbiotic fixation + residue credit
   const organicBonus = hasLegume ? 70 : 0;
-  const nitrogenBalance = hasMonoculture ? rawCropN : rawCropN + organicBonus;
+  const nitrogenBalance = hasMonoculture ? nitrogenFixationSum : nitrogenFixationSum + organicBonus;
 
-  // 2. Soil score (0-100)
-  let soilScore = 55 + Math.round(nitrogenBalance * 0.6);
+  // 2. Soil fertility
+  let soilFertility = 55 + Math.round(nitrogenBalance * 0.6);
   if (hasLegume) {
-    soilScore += 15;
-    strengths.push('Régénération azotée naturelle par légumineuse (+N symbiotique)');
+    soilFertility += 15;
+    strengths.push({ code: 'soil.legume' });
   }
   if (hasMonoculture) {
-    soilScore = Math.min(soilScore, 20);
-    weaknesses.push('Succession consécutive de même famille : épuisement minéral sévère');
+    soilFertility = Math.min(soilFertility, 20);
+    weaknesses.push({ code: 'soil.monoculture' });
   }
-  soilScore = Math.max(10, Math.min(98, soilScore));
+  soilFertility = clamp(soilFertility, 10, 98);
 
-  // 3. Pest / Disease break risk
-  let pestRisk: 'faible' | 'modere' | 'eleve' = 'faible';
+  // 3. Pest / disease break
+  let pestRiskLevel: 'faible' | 'modere' | 'eleve' = 'modere';
   if (hasMonoculture) {
-    pestRisk = 'eleve';
+    pestRiskLevel = 'eleve';
+    weaknesses.push({ code: 'pest.monoculture' });
   } else if (hasCereal && hasLegume) {
-    pestRisk = 'faible';
-    strengths.push('Rupture biologique efficace du cycle du foreur de tige');
-  } else {
-    pestRisk = 'modere';
+    pestRiskLevel = 'faible';
+    strengths.push({ code: 'pest.break' });
   }
 
-  // 4. Water adequacy & Climate match
-  let waterSecurity = 80;
-  let waterStressRisk = 12;
+  // 4. Water security: measured rain supply versus the rotation's requirement,
+  //    adjusted by the current soil moisture and rainfall anomaly from POWER.
+  let waterSecurity: number;
+  if (features.rainSupplyMm !== null) {
+    const ratio = features.rainSupplyMm / Math.max(1, features.waterNeedTotalMm);
+    waterSecurity = clamp(Math.round(ratio * 100));
+  } else {
+    waterSecurity = 55;
+  }
 
   if (hasMaraichage) {
-    waterSecurity = 42;
-    waterStressRisk = 38;
-    weaknesses.push('Risque élevé de déficit hydrique en saison sèche maraîchère');
-  } else if (hasTubercule && hasLegume) {
-    waterSecurity = 92;
-    waterStressRisk = 12;
-    strengths.push('Excellente adéquation pluviométrique avec le calendrier bimodal');
-  } else if (hasMonoculture) {
-    waterSecurity = 50;
-    waterStressRisk = 45;
+    waterSecurity = clamp(waterSecurity - 12);
+    weaknesses.push({ code: 'water.horticulture' });
+  }
+  if (features.soilMoisturePercent !== null) {
+    // Surface wetness above 40% of field capacity means the seedbed is workable.
+    waterSecurity = clamp(waterSecurity + Math.round((features.soilMoisturePercent - 40) * 0.25));
+  }
+  if (features.rainfallAnomalyPercent !== null && features.rainfallAnomalyPercent < -25) {
+    waterSecurity = clamp(waterSecurity - 10);
+    weaknesses.push({ code: 'water.dry_anomaly', params: { percent: Math.abs(features.rainfallAnomalyPercent) } });
+  } else if (features.rainfallAnomalyPercent !== null && features.rainfallAnomalyPercent > 20) {
+    strengths.push({ code: 'water.wet_anomaly', params: { percent: features.rainfallAnomalyPercent } });
+  }
+  if (features.drySpellWarning) {
+    weaknesses.push({ code: 'water.dry_spell' });
+  }
+  if (hasTubercule && hasLegume) {
+    waterSecurity = clamp(Math.max(waterSecurity, 70));
+    strengths.push({ code: 'water.deep_root' });
+  }
+  if (hasMonoculture) {
+    waterSecurity = clamp(waterSecurity - 8);
   }
 
-  const climateMatch = Math.round(waterSecurity * 0.95 + (hasLegume ? 3 : 0));
+  const climateMatch = clamp(Math.round(waterSecurity * 0.95 + (hasLegume ? 3 : 0)));
 
-  // 5. Food diversification & household security
+  // 5. Household food diversification
   let foodDiversification = 70;
   if (hasCereal && hasLegume && hasTubercule) {
     foodDiversification = 85;
-    strengths.push('Filet vivrier complet : céréale, protéine végétale et tubercule de garde');
+    strengths.push({ code: 'food.complete' });
   } else if (hasMonoculture) {
     foodDiversification = 20;
-    weaknesses.push('Monoculture céréalière sans diversification vivrière');
+    weaknesses.push({ code: 'food.monoculture' });
   }
 
-  // 6. FCFA Margin index
-  let fcfaMargin = 75;
+  // 6. Market value index (reference prices in the crop catalogue)
+  let fcfaMargin = 70;
   if (hasMaraichage) {
     fcfaMargin = 95;
-    strengths.push('Potentiel financier maximum sur les marchés de fête de Yaoundé');
+    strengths.push({ code: 'margin.horticulture' });
   } else if (hasCereal && hasLegume && hasTubercule) {
     fcfaMargin = 80;
-    strengths.push('Marge nette régulière et sécurisée à 1 450 000 FCFA/ha');
+    strengths.push({ code: 'margin.balanced' });
   } else if (hasMonoculture) {
     fcfaMargin = 55;
-    weaknesses.push('Surcoûts croissants en fertilisants de synthèse (+80%)');
+    weaknesses.push({ code: 'margin.monoculture' });
   }
 
-  // 7. Weighted aggregate score
-  const totalWeight = weights.waterSecurity + weights.fcfaMargin + weights.soilFertility + weights.foodSecurity;
-  const finalScore = Math.round(
+  // 7. Weighted aggregate
+  const totalWeight =
+    weights.waterSecurity + weights.fcfaMargin + weights.soilFertility + weights.foodSecurity || 1;
+  const score = Math.round(
     (waterSecurity * weights.waterSecurity +
       fcfaMargin * weights.fcfaMargin +
-      soilScore * weights.soilFertility +
+      soilFertility * weights.soilFertility +
       foodDiversification * weights.foodSecurity) /
-    totalWeight
+      totalWeight,
   );
 
-  const failureRiskPercent = Math.max(5, Math.min(85, Math.round((100 - finalScore) * 0.85)));
+  const waterStressRiskPercent = clamp(100 - waterSecurity);
+  const failureRiskPercent = clamp(Math.round((100 - score) * 0.85), 5, 85);
 
-  let agronomicRecommendation = '';
-  if (finalScore >= 80) {
-    agronomicRecommendation = 'Scénario fortement recommandé : équilibre optimal eau-sol et résilience garantie.';
-  } else if (finalScore >= 65) {
-    agronomicRecommendation = 'Scénario spéculatif : gains élevés sous réserve de maîtrise de l’irrigation.';
-  } else {
-    agronomicRecommendation = 'Scénario déconseillé par l’IRAD : risque élevé de faillite et dégradation du sol.';
-  }
+  let agronomicRecommendation: EngineFinding;
+  if (score >= 80) agronomicRecommendation = { code: 'recommend.strong' };
+  else if (score >= 65) agronomicRecommendation = { code: 'recommend.speculative' };
+  else agronomicRecommendation = { code: 'recommend.avoid' };
 
   return {
-    score: finalScore,
+    score,
     nitrogenBalanceKgHa: nitrogenBalance,
-    waterStressRiskPercent: waterStressRisk,
+    waterStressRiskPercent,
     failureRiskPercent,
-    pestRiskLevel: pestRisk,
-    radarScores: {
-      waterSecurity,
-      climateMatch,
-      soilFertility: soilScore,
-      foodDiversification,
-      fcfaMargin,
-    },
+    pestRiskLevel,
+    radarScores: { waterSecurity, climateMatch, soilFertility, foodDiversification, fcfaMargin },
     strengths,
     weaknesses,
     agronomicRecommendation,

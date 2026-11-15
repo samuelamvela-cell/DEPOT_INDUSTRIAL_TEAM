@@ -10,9 +10,9 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
       manifest: {
-        name: 'AgroPredict — Décisions Culturales & Climat',
+        name: 'AgroPredict — Crop decisions powered by Earth observation',
         short_name: 'AgroPredict',
-        description: "Application d'aide à la décision agronomique & climat-intelligente (NASA / IRAD Cameroun)",
+        description: 'Climate-smart crop rotation decision support for smallholder farms in Cameroon',
         theme_color: '#005226',
         background_color: '#ecfef1',
         display: 'standalone',
@@ -65,6 +65,14 @@ export default defineConfig({
       },
     }),
   ],
+  server: {
+    proxy: {
+      '/api': {
+        target: process.env.API_URL || 'http://127.0.0.1:4000',
+        changeOrigin: true,
+      },
+    },
+  },
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
