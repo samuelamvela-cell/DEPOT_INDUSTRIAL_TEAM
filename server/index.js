@@ -7,7 +7,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 
-import { initDb, all, get, run, randomId } from './db.js';
+import { initDb, all, get, run, randomId, persist } from './db.js';
 import { CROP_CATALOG } from './catalog.js';
 import { getTelemetry, PowerError } from './power.js';
 
@@ -50,22 +50,38 @@ const SECRET = { value: null };
 const secret = () => (SECRET.value ||= jwtSecret());
 
 function seedCrops() {
-  const count = get('SELECT COUNT(*) AS n FROM crops');
-  if (count && count.n === CROP_CATALOG.length) return;
-  run('DELETE FROM crops');
   for (const c of CROP_CATALOG) {
-    run(
-      `INSERT INTO crops (id, name, name_fr, variety, family, cycle_days, water_need_mm, water_need_level,
-        nitrogen_fixation, yield_potential, market_price_fcfa, description, description_fr,
-        stress_tolerance, stress_tolerance_fr, favorable_seasons, image_url)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-      [
-        c.id, c.name, c.nameFr, c.variety, c.family, c.cycleDays, c.waterNeedMm, c.waterNeedLevel,
-        c.nitrogenFixationKgHa, c.yieldPotentialKgHa, c.marketPriceFcfaKg, c.description,
-        c.descriptionFr, c.stressTolerance, c.stressToleranceFr, c.favorableSeasons, c.imageUrl,
-      ],
-    );
+    const existing = get('SELECT id FROM crops WHERE id = ?', [c.id]);
+    if (!existing) {
+      run(
+        `INSERT INTO crops (id, name, name_fr, variety, family, cycle_days, water_need_mm, water_need_level,
+          nitrogen_fixation, yield_potential, market_price_fcfa, description, description_fr,
+          stress_tolerance, stress_tolerance_fr, favorable_seasons, image_url)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+        [
+          c.id, c.name, c.nameFr, c.variety, c.family, c.cycleDays, c.waterNeedMm, c.waterNeedLevel,
+          c.nitrogenFixationKgHa, c.yieldPotentialKgHa, c.marketPriceFcfaKg, c.description,
+          c.descriptionFr, c.stressTolerance, c.stressToleranceFr, c.favorableSeasons, c.imageUrl,
+        ],
+      );
+    } else {
+      run(
+        `UPDATE crops SET
+          name = ?, name_fr = ?, variety = ?, family = ?, cycle_days = ?, water_need_mm = ?,
+          water_need_level = ?, nitrogen_fixation = ?, yield_potential = ?, market_price_fcfa = ?,
+          description = ?, description_fr = ?, stress_tolerance = ?, stress_tolerance_fr = ?,
+          favorable_seasons = ?, image_url = ?
+         WHERE id = ?`,
+        [
+          c.name, c.nameFr, c.variety, c.family, c.cycleDays, c.waterNeedMm,
+          c.waterNeedLevel, c.nitrogenFixationKgHa, c.yieldPotentialKgHa, c.marketPriceFcfaKg,
+          c.description, c.descriptionFr, c.stressTolerance, c.stressToleranceFr,
+          c.favorableSeasons, c.imageUrl, c.id,
+        ],
+      );
+    }
   }
+  persist();
 }
 
 // --- serialisers -----------------------------------------------------------

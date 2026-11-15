@@ -38,7 +38,7 @@ export const CROP_CATALOG = [
     nitrogenFixationKgHa: 45,
     yieldPotentialKgHa: 1400,
     marketPriceFcfaKg: 650,
-    imageUrl: 'https://images.unsplash.com/photo-1599940824399-b87987ceb72a?w=600&auto=format&fit=crop&q=80',
+    imageUrl: 'https://images.unsplash.com/photo-1564894809611-1742fc40ed80?w=600&auto=format&fit=crop&q=80',
     description:
       'Ultra-short-cycle legume fixing symbiotic nitrogen. Breaks the stem-borer cycle after a cereal.',
     descriptionFr:
@@ -59,7 +59,7 @@ export const CROP_CATALOG = [
     nitrogenFixationKgHa: -20,
     yieldPotentialKgHa: 22000,
     marketPriceFcfaKg: 150,
-    imageUrl: 'https://images.unsplash.com/photo-1596704017254-9b121068fb31?w=600&auto=format&fit=crop&q=80',
+    imageUrl: 'https://images.unsplash.com/photo-1757283961570-682154747d9c?w=600&auto=format&fit=crop&q=80',
     description:
       'Rustic tuber drawing water from deep horizons. Reliable buffer against rainfall shocks.',
     descriptionFr:
@@ -80,7 +80,7 @@ export const CROP_CATALOG = [
     nitrogenFixationKgHa: 38,
     yieldPotentialKgHa: 1800,
     marketPriceFcfaKg: 850,
-    imageUrl: 'https://images.unsplash.com/photo-1567306226416-28f0efdc88ce?w=600&auto=format&fit=crop&q=80',
+    imageUrl: 'https://images.unsplash.com/photo-1524594345772-c953a3ae53e8?w=600&auto=format&fit=crop&q=80',
     description:
       'Strong demand on Yaoundé urban markets. Leaves a nitrogen credit ahead of a cereal.',
     descriptionFr:
@@ -101,7 +101,7 @@ export const CROP_CATALOG = [
     nitrogenFixationKgHa: 50,
     yieldPotentialKgHa: 2100,
     marketPriceFcfaKg: 420,
-    imageUrl: 'https://images.unsplash.com/photo-1594489428504-5c0c480a15fd?w=600&auto=format&fit=crop&q=80',
+    imageUrl: 'https://images.unsplash.com/photo-1649257171206-37625b1f3b2f?w=600&auto=format&fit=crop&q=80',
     description:
       'High value for local feed mills. Strong regeneration of topsoil structure.',
     descriptionFr:
@@ -143,7 +143,7 @@ export const CROP_CATALOG = [
     nitrogenFixationKgHa: -45,
     yieldPotentialKgHa: 2600,
     marketPriceFcfaKg: 320,
-    imageUrl: 'https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?w=600&auto=format&fit=crop&q=80',
+    imageUrl: 'https://images.unsplash.com/photo-1758356860542-a2df92aad294?w=600&auto=format&fit=crop&q=80',
     description:
       'Drought-adapted cereal for the transition zone, also used for local brewing.',
     descriptionFr:
@@ -164,7 +164,7 @@ export const CROP_CATALOG = [
     nitrogenFixationKgHa: -80,
     yieldPotentialKgHa: 12000,
     marketPriceFcfaKg: 200,
-    imageUrl: 'https://images.unsplash.com/photo-1603833665858-e61d17a86224?w=600&auto=format&fit=crop&q=80',
+    imageUrl: 'https://images.unsplash.com/photo-1678998645884-2cbaa501be04?w=600&auto=format&fit=crop&q=80',
     description:
       'Perennial food crop with a permanent market in Yaoundé. Heavy potassium demand.',
     descriptionFr:
