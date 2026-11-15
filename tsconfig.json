@@ -3,9 +3,10 @@
     "target": "ESNext",
     "useDefineForClassFields": true,
     "module": "ESNext",
-    "ignoreDeprecations": "6.0",
+
     "moduleResolution": "node",
     "ignoreDeprecations": "6.0",
+
 
     "strict": true,
     "jsx": "preserve",
