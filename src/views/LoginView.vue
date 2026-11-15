@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/authStore';
 import { useAppStore } from '@/stores/appStore';
 import AppButton from '@/components/common/AppButton.vue';
+import loginHeroImage from '@/assets/login-field.jpg';
 
 const router = useRouter();
 const route = useRoute();
@@ -34,20 +35,31 @@ const submit = async () => {
 <template>
   <div class="min-h-screen bg-surface flex flex-col lg:flex-row">
     <!-- Brand panel -->
-    <aside class="lg:w-[46%] bg-primary text-on-primary flex flex-col justify-between p-8 sm:p-12">
-      <div class="flex items-center gap-3">
-        <span class="material-symbols-outlined text-[32px]">agriculture</span>
+    <aside class="relative overflow-hidden lg:w-[46%] bg-primary text-on-primary flex flex-col justify-between p-8 sm:p-12">
+      <!-- Background farm image with green gradient overlay -->
+      <img
+        :src="loginHeroImage"
+        alt="AgroPredict fields"
+        class="absolute inset-0 w-full h-full object-cover object-center pointer-events-none"
+      />
+      <div class="absolute inset-0 bg-gradient-to-b from-primary/90 via-primary/80 to-primary/95 pointer-events-none"></div>
+      <div class="absolute inset-0 bg-primary/25 backdrop-blur-[0.5px] pointer-events-none"></div>
+
+      <div class="relative z-10 flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-white/15 backdrop-blur-sm flex items-center justify-center">
+          <span class="material-symbols-outlined text-[28px] text-white">agriculture</span>
+        </div>
         <div>
-          <p class="font-headline-sm text-headline-sm font-bold leading-none">AgroPredict</p>
-          <p class="font-caption text-caption text-primary-fixed/80">NASA Earth × IRAD Cameroon</p>
+          <p class="font-headline-sm text-headline-sm font-bold leading-none text-white">AgroPredict</p>
+          <p class="font-caption text-caption text-primary-fixed/90">NASA Earth × IRAD Cameroon</p>
         </div>
       </div>
 
-      <div class="space-y-6 max-w-md my-10">
-        <h2 class="font-display-lg text-headline-lg font-bold leading-tight">
+      <div class="relative z-10 space-y-6 max-w-md my-10">
+        <h2 class="font-display-lg text-headline-lg font-bold leading-tight text-white drop-shadow-sm">
           {{ tr('Crop decisions powered by Earth observation.', "Des décisions culturales éclairées par l'espace.") }}
         </h2>
-        <p class="font-body-md text-body-md text-primary-fixed/90">
+        <p class="font-body-md text-body-md text-primary-fixed/95">
           {{
             tr(
               'Sign in to plan crop rotations with live NASA POWER rainfall, soil wetness and reference yields for your own plots.',
@@ -55,23 +67,23 @@ const submit = async () => {
             )
           }}
         </p>
-        <ul class="space-y-2 font-body-md text-caption text-primary-fixed/85">
-          <li class="flex items-center gap-2">
-            <span class="material-symbols-outlined text-[18px]">satellite_alt</span>
-            {{ tr('Live POWER telemetry per plot', 'Télémétrie POWER en direct par parcelle') }}
+        <ul class="space-y-2.5 font-body-md text-caption text-white/95">
+          <li class="flex items-center gap-2.5">
+            <span class="material-symbols-outlined text-[20px] text-primary-fixed">satellite_alt</span>
+            <span>{{ tr('Live POWER telemetry per plot', 'Télémétrie POWER en direct par parcelle') }}</span>
           </li>
-          <li class="flex items-center gap-2">
-            <span class="material-symbols-outlined text-[18px]">autorenew</span>
-            {{ tr('3-season rotation scoring engine', 'Moteur de notation de rotations sur 3 saisons') }}
+          <li class="flex items-center gap-2.5">
+            <span class="material-symbols-outlined text-[20px] text-primary-fixed">autorenew</span>
+            <span>{{ tr('3-season rotation scoring engine', 'Moteur de notation de rotations sur 3 saisons') }}</span>
           </li>
-          <li class="flex items-center gap-2">
-            <span class="material-symbols-outlined text-[18px]">savings</span>
-            {{ tr('FCFA margins from reference prices', 'Marges FCFA sur prix de référence') }}
+          <li class="flex items-center gap-2.5">
+            <span class="material-symbols-outlined text-[20px] text-primary-fixed">savings</span>
+            <span>{{ tr('FCFA margins from reference prices', 'Marges FCFA sur prix de référence') }}</span>
           </li>
         </ul>
       </div>
 
-      <p class="font-caption text-[11px] text-primary-fixed/60">
+      <p class="relative z-10 font-caption text-[11px] text-primary-fixed/75">
         {{ appStore.t('app.disclaimer') }}
       </p>
     </aside>
