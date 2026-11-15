@@ -30,6 +30,12 @@ const submit = async () => {
     error.value = e?.message || tr('Sign in failed.', 'Connexion impossible.');
   }
 };
+
+const fillDemo = () => {
+  email.value = 'gregoire@agropredict.cm';
+  password.value = 'Password123!';
+  error.value = null;
+};
 </script>
 
 <template>
@@ -136,6 +142,26 @@ const submit = async () => {
             {{ auth.loading ? tr('Signing in…', 'Connexion…') : tr('Sign in', 'Se connecter') }}
           </AppButton>
         </form>
+
+        <!-- Quick demo credentials card -->
+        <div class="p-3 rounded-xl bg-surface-container-low border border-outline-variant/40 space-y-1.5 text-left">
+          <div class="flex items-center justify-between text-caption font-label-md">
+            <span class="flex items-center gap-1 font-bold text-primary">
+              <span class="material-symbols-outlined text-[15px]">key</span>
+              {{ tr('Demo account', 'Compte démo') }}
+            </span>
+            <button
+              type="button"
+              class="text-primary font-bold hover:underline cursor-pointer text-[12px]"
+              @click="fillDemo"
+            >
+              {{ tr('Fill credentials', 'Remplir auto') }}
+            </button>
+          </div>
+          <p class="font-mono text-[11px] text-on-surface-variant select-all">
+            gregoire@agropredict.cm &bull; Password123!
+          </p>
+        </div>
 
         <p class="font-body-md text-caption text-on-surface-variant text-center">
           {{ tr('No account yet?', 'Pas encore de compte ?') }}

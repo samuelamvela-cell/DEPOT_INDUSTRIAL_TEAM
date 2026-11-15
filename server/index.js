@@ -84,6 +84,65 @@ function seedCrops() {
   persist();
 }
 
+function seedUsers() {
+  const demoEmail = 'gregoire@agropredict.cm';
+  let demo = get('SELECT * FROM users WHERE email = ?', [demoEmail]);
+  if (!demo) {
+    const id = 'usr_demo_gregoire';
+    run(
+      `INSERT INTO users (id, name, email, password_hash, role, organization, phone, language, currency, surface_unit, region, created_at)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
+      [
+        id,
+        'Grégoire Ndongo',
+        demoEmail,
+        bcrypt.hashSync('Password123!', 10),
+        'farm_advisor',
+        'Coopérative des Planteurs de Lékié',
+        '+237 670 12 34 56',
+        'fr',
+        'FCFA',
+        'ha',
+        'Lékié',
+        new Date().toISOString(),
+      ],
+    );
+    demo = get('SELECT * FROM users WHERE id = ?', [id]);
+  }
+
+  if (demo) {
+    const plotCount = get('SELECT COUNT(*) AS count FROM plots WHERE user_id = ?', [demo.id]);
+    if (!plotCount || plotCount.count === 0) {
+      run(
+        `INSERT INTO plots (id, user_id, name, code, surface_ha, soil_type, soil_ph, slope_percent, awc_mm, lat, lng, locality, region, prev_crop, prev_variety, prev_harvest, prev_yield, prev_residual_n, created_at)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+        [
+          'plt_demo_lekie_1',
+          demo.id,
+          'Parcelle Lékié Nord',
+          'LK-01',
+          2.5,
+          'ferralitic',
+          5.8,
+          3.0,
+          120,
+          4.18,
+          11.52,
+          'Monatélé, Lékié',
+          'Lékié',
+          'crop_mais',
+          'CMS 8704',
+          '2025-12-15',
+          3.2,
+          25,
+          new Date().toISOString(),
+        ],
+      );
+    }
+  }
+  persist();
+}
+
 // --- serialisers -----------------------------------------------------------
 const publicUser = (row) => ({
   id: row.id,
@@ -411,6 +470,7 @@ app.use((err, _req, res, _next) => {
 
 const started = await initDb();
 seedCrops();
+seedUsers();
 app.listen(PORT, () => {
   console.log(`AgroPredict API listening on http://127.0.0.1:${PORT}`);
   console.log(`Database: server/data/agropredict.sqlite`);
