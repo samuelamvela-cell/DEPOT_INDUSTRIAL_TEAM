@@ -85,67 +85,78 @@ function seedCrops() {
 }
 
 function seedUsers() {
-  const demoEmail = 'industrialteam@agropredict.cm';
-  // Migrate / update previous demo email if it exists
-  const oldDemo = get('SELECT id FROM users WHERE email = ?', ['gregoire@agropredict.cm']);
-  if (oldDemo) {
-    run('UPDATE users SET email = ?, name = ? WHERE id = ?', [demoEmail, 'Industrial TEAM', oldDemo.id]);
-  }
+  const usersToSeed = [
+    {
+      id: 'usr_demo_industrial',
+      name: 'Industrial TEAM',
+      email: 'industrialteam@agropredict.cm',
+      password: 'Password123!',
+      plotName: 'Parcelle Lékié Nord',
+      plotCode: 'LK-01',
+    },
+    {
+      id: 'usr_demo_gregoire',
+      name: 'Grégoire Ndongo',
+      email: 'gregoire@agropredict.cm',
+      password: 'Password123!',
+      plotName: 'Parcelle Lékié Centre',
+      plotCode: 'LK-02',
+    },
+  ];
 
-  let demo = get('SELECT * FROM users WHERE email = ?', [demoEmail]);
-  if (!demo) {
-    const id = 'usr_demo_industrial';
-    run(
-      `INSERT INTO users (id, name, email, password_hash, role, organization, phone, language, currency, surface_unit, region, created_at)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
-      [
-        id,
-        'Industrial TEAM',
-        demoEmail,
-        bcrypt.hashSync('Password123!', 10),
-        'farm_advisor',
-        'Coopérative des Planteurs de Lékié',
-        '+237 670 12 34 56',
-        'fr',
-        'FCFA',
-        'ha',
-        'Lékié',
-        new Date().toISOString(),
-      ],
-    );
-    demo = get('SELECT * FROM users WHERE id = ?', [id]);
-  } else {
-    run('UPDATE users SET name = ? WHERE id = ?', ['Industrial TEAM', demo.id]);
-  }
-
-  if (demo) {
-    const plotCount = get('SELECT COUNT(*) AS count FROM plots WHERE user_id = ?', [demo.id]);
-    if (!plotCount || plotCount.count === 0) {
+  for (const u of usersToSeed) {
+    let user = get('SELECT * FROM users WHERE email = ?', [u.email]);
+    if (!user) {
       run(
-        `INSERT INTO plots (id, user_id, name, code, surface_ha, soil_type, soil_ph, slope_percent, awc_mm, lat, lng, locality, region, prev_crop, prev_variety, prev_harvest, prev_yield, prev_residual_n, created_at)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+        `INSERT INTO users (id, name, email, password_hash, role, organization, phone, language, currency, surface_unit, region, created_at)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
         [
-          'plt_demo_lekie_1',
-          demo.id,
-          'Parcelle Lékié Nord',
-          'LK-01',
-          2.5,
-          'ferralitic',
-          5.8,
-          3.0,
-          120,
-          4.18,
-          11.52,
-          'Monatélé, Lékié',
+          u.id,
+          u.name,
+          u.email,
+          bcrypt.hashSync(u.password, 10),
+          'farm_advisor',
+          'Coopérative des Planteurs de Lékié',
+          '+237 670 12 34 56',
+          'fr',
+          'FCFA',
+          'ha',
           'Lékié',
-          'crop_mais',
-          'CMS 8704',
-          '2025-12-15',
-          3.2,
-          25,
           new Date().toISOString(),
         ],
       );
+      user = get('SELECT * FROM users WHERE id = ?', [u.id]);
+    }
+
+    if (user) {
+      const plotCount = get('SELECT COUNT(*) AS count FROM plots WHERE user_id = ?', [user.id]);
+      if (!plotCount || plotCount.count === 0) {
+        run(
+          `INSERT INTO plots (id, user_id, name, code, surface_ha, soil_type, soil_ph, slope_percent, awc_mm, lat, lng, locality, region, prev_crop, prev_variety, prev_harvest, prev_yield, prev_residual_n, created_at)
+           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+          [
+            `plt_${user.id}_1`,
+            user.id,
+            u.plotName,
+            u.plotCode,
+            2.5,
+            'ferralitic',
+            5.8,
+            3.0,
+            120,
+            4.18,
+            11.52,
+            'Monatélé, Lékié',
+            'Lékié',
+            'crop_mais',
+            'CMS 8704',
+            '2025-12-15',
+            3.2,
+            25,
+            new Date().toISOString(),
+          ],
+        );
+      }
     }
   }
   persist();

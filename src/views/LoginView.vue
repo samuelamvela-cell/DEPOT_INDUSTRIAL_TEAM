@@ -31,8 +31,8 @@ const submit = async () => {
   }
 };
 
-const fillDemo = () => {
-  email.value = 'industrialteam@agropredict.cm';
+const fillDemo = (targetEmail = 'industrialteam@agropredict.cm') => {
+  email.value = targetEmail;
   password.value = 'Password123!';
   error.value = null;
 };
@@ -153,7 +153,7 @@ const fillDemo = () => {
             <button
               type="button"
               class="text-primary font-bold hover:underline cursor-pointer text-[12px]"
-              @click="fillDemo"
+              @click="fillDemo('industrialteam@agropredict.cm')"
             >
               {{ tr('Fill credentials', 'Remplir auto') }}
             </button>
