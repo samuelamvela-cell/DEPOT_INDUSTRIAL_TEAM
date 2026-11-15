@@ -85,16 +85,22 @@ function seedCrops() {
 }
 
 function seedUsers() {
-  const demoEmail = 'gregoire@agropredict.cm';
+  const demoEmail = 'industrialteam@agropredict.cm';
+  // Migrate / update previous demo email if it exists
+  const oldDemo = get('SELECT id FROM users WHERE email = ?', ['gregoire@agropredict.cm']);
+  if (oldDemo) {
+    run('UPDATE users SET email = ?, name = ? WHERE id = ?', [demoEmail, 'Industrial TEAM', oldDemo.id]);
+  }
+
   let demo = get('SELECT * FROM users WHERE email = ?', [demoEmail]);
   if (!demo) {
-    const id = 'usr_demo_gregoire';
+    const id = 'usr_demo_industrial';
     run(
       `INSERT INTO users (id, name, email, password_hash, role, organization, phone, language, currency, surface_unit, region, created_at)
        VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
       [
         id,
-        'Grégoire Ndongo',
+        'Industrial TEAM',
         demoEmail,
         bcrypt.hashSync('Password123!', 10),
         'farm_advisor',
@@ -108,6 +114,8 @@ function seedUsers() {
       ],
     );
     demo = get('SELECT * FROM users WHERE id = ?', [id]);
+  } else {
+    run('UPDATE users SET name = ? WHERE id = ?', ['Industrial TEAM', demo.id]);
   }
 
   if (demo) {

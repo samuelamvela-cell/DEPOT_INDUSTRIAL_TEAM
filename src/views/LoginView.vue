@@ -32,7 +32,7 @@ const submit = async () => {
 };
 
 const fillDemo = () => {
-  email.value = 'gregoire@agropredict.cm';
+  email.value = 'industrialteam@agropredict.cm';
   password.value = 'Password123!';
   error.value = null;
 };
@@ -159,7 +159,7 @@ const fillDemo = () => {
             </button>
           </div>
           <p class="font-mono text-[11px] text-on-surface-variant select-all">
-            gregoire@agropredict.cm &bull; Password123!
+            industrialteam@agropredict.cm &bull; Password123!
           </p>
         </div>
 
