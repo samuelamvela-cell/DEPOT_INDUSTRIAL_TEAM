@@ -28,12 +28,22 @@ const ZONE_BY_REGION = {
 
 function jwtSecret() {
   if (process.env.JWT_SECRET) return process.env.JWT_SECRET;
-  const secretFile = path.join(DATA_DIR, 'jwt-secret');
-  if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
-  if (!fs.existsSync(secretFile)) {
-    fs.writeFileSync(secretFile, crypto.randomBytes(48).toString('hex'), { mode: 0o600 });
+  try {
+    if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+    const secretFile = path.join(DATA_DIR, 'jwt-secret');
+    if (!fs.existsSync(secretFile)) {
+      fs.writeFileSync(secretFile, crypto.randomBytes(48).toString('hex'), { mode: 0o600 });
+    }
+    return fs.readFileSync(secretFile, 'utf8').trim();
+  } catch {
+    const localDir = path.join(__dirname, 'data');
+    if (!fs.existsSync(localDir)) fs.mkdirSync(localDir, { recursive: true });
+    const secretFile = path.join(localDir, 'jwt-secret');
+    if (!fs.existsSync(secretFile)) {
+      fs.writeFileSync(secretFile, crypto.randomBytes(48).toString('hex'), { mode: 0o600 });
+    }
+    return fs.readFileSync(secretFile, 'utf8').trim();
   }
-  return fs.readFileSync(secretFile, 'utf8').trim();
 }
 
 const SECRET = { value: null };
@@ -151,7 +161,28 @@ function sign(user) {
 
 // --- app -------------------------------------------------------------------
 const app = express();
-app.use(cors());
+const configuredCorsOrigin = (process.env.CORS_ORIGIN || '').trim().replace(/\/+$/, '');
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      // allow requests with no origin (like mobile apps, curl, or server-to-server)
+      if (!origin) return callback(null, true);
+      // allow matching configured origin (handling trailing slashes)
+      if (!configuredCorsOrigin || configuredCorsOrigin === '*' || origin === configuredCorsOrigin) {
+        return callback(null, true);
+      }
+      // allow Vercel domains and local dev
+      if (origin.endsWith('.vercel.app') || origin.includes('localhost') || origin.includes('127.0.0.1')) {
+        return callback(null, true);
+      }
+      return callback(null, true);
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
+  }),
+);
 app.use(express.json({ limit: '256kb' }));
 
 app.get('/api/health', (_req, res) => {

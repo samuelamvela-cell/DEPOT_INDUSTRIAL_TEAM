@@ -1,6 +1,7 @@
 import type { AuthUser, ClimateTelemetry, Crop, FarmPlot } from '@/types';
 
 const TOKEN_KEY = 'agropredict_token';
+const API_BASE = ((import.meta.env?.VITE_API_URL as string) || '').trim().replace(/\/+$/, '');
 
 export class ApiError extends Error {
   status: number;
@@ -38,8 +39,9 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   };
 
   let res: Response;
+  const targetUrl = API_BASE ? `${API_BASE}/api${path}` : `/api${path}`;
   try {
-    res = await fetch(`/api${path}`, { ...init, headers });
+    res = await fetch(targetUrl, { ...init, headers });
   } catch {
     throw new ApiError('Cannot reach the AgroPredict server. Is the API running?', 0);
   }
