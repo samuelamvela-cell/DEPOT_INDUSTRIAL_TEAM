@@ -58,27 +58,27 @@ const plotLabel = computed(() => {
 
 <template>
   <header
-    class="fixed top-0 left-0 lg:left-72 right-0 h-16 bg-surface/90 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-40 flex items-center justify-between px-4 sm:px-6 lg:px-8 border-b border-outline-variant/15"
+    class="fixed top-0 left-0 lg:left-72 right-0 h-16 bg-surface/90 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-40 flex items-center justify-between px-3 sm:px-6 lg:px-8 border-b border-outline-variant/15 gap-2"
   >
     <!-- Left: active plot selector -->
-    <div class="flex items-center gap-3 flex-1 max-w-xl">
-      <div class="relative" data-menu-root>
+    <div class="flex items-center gap-2 sm:gap-3 min-w-0 flex-1 max-w-xs sm:max-w-xl">
+      <div class="relative min-w-0" data-menu-root>
         <button
           type="button"
-          class="flex items-center gap-2 bg-surface-container-lowest px-3 py-1.5 rounded-xl shadow-[0_1px_4px_rgba(0,0,0,0.02)] min-h-[44px] cursor-pointer hover:bg-surface-container-low transition-colors"
+          class="flex items-center gap-1.5 sm:gap-2 bg-surface-container-lowest px-2.5 sm:px-3 py-1.5 rounded-xl shadow-[0_1px_4px_rgba(0,0,0,0.02)] h-11 cursor-pointer hover:bg-surface-container-low transition-colors max-w-full"
           @click="plotMenuOpen = !plotMenuOpen"
         >
-          <span class="material-symbols-outlined text-primary text-[20px]">pin_drop</span>
-          <div class="text-left">
-            <p class="font-label-md text-label-md text-on-surface-variant leading-none">{{ appStore.t('app.activePlot') }}</p>
-            <p class="font-body-bold text-label-lg text-on-surface leading-tight">{{ plotLabel }}</p>
+          <span class="material-symbols-outlined text-primary text-[18px] sm:text-[20px] shrink-0">pin_drop</span>
+          <div class="text-left min-w-0">
+            <p class="hidden xs:block font-label-md text-[10px] text-on-surface-variant leading-none truncate">{{ appStore.t('app.activePlot') }}</p>
+            <p class="font-body-bold text-[12px] sm:text-label-lg text-on-surface leading-tight truncate whitespace-nowrap">{{ plotLabel }}</p>
           </div>
-          <span class="material-symbols-outlined text-on-surface-variant text-[18px] ml-1">expand_more</span>
+          <span class="material-symbols-outlined text-on-surface-variant text-[16px] sm:text-[18px] ml-0.5 sm:ml-1 shrink-0">expand_more</span>
         </button>
 
         <div
           v-if="plotMenuOpen"
-          class="absolute left-0 mt-2 w-64 bg-surface-container-lowest rounded-xl shadow-xl border border-outline-variant/30 py-1 z-50"
+          class="absolute left-0 mt-2 w-64 max-w-[calc(100vw-24px)] bg-surface-container-lowest rounded-xl shadow-xl border border-outline-variant/30 py-1 z-50"
         >
           <button
             v-for="plot in farmStore.plots"
@@ -108,43 +108,43 @@ const plotLabel = computed(() => {
         </div>
       </div>
 
-      <div class="hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-full bg-surface-container-low text-tertiary font-label-md text-label-md">
+      <div class="hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-full bg-surface-container-low text-tertiary font-label-md text-label-md shrink-0">
         <span class="material-symbols-outlined text-[16px]">public</span>
         <span>NASA POWER</span>
       </div>
     </div>
 
     <!-- Right: language, region, account -->
-    <div class="flex items-center gap-2.5 sm:gap-3">
+    <div class="flex items-center gap-1.5 sm:gap-3 shrink-0">
       <button
         type="button"
-        class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-surface-container hover:bg-surface-container-high border border-outline-variant/30 text-on-surface font-label-md text-label-md transition-all shadow-xs active:scale-95 cursor-pointer min-h-[38px]"
+        class="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full bg-surface-container hover:bg-surface-container-high border border-outline-variant/30 text-on-surface font-label-md text-label-md transition-all shadow-xs active:scale-95 cursor-pointer h-9 sm:h-[38px] shrink-0"
         :title="appStore.t('app.switchLang')"
         @click="appStore.toggleLanguage"
       >
-        <span class="material-symbols-outlined text-primary text-[18px]">translate</span>
-        <span class="flex items-center gap-1 font-mono font-bold text-[13px]">
-          <span :class="appStore.language === 'en' ? 'text-primary bg-primary/10 px-1.5 py-0.5 rounded-md' : 'text-on-surface-variant opacity-70'">EN</span>
-          <span class="text-outline text-[11px]">|</span>
-          <span :class="appStore.language === 'fr' ? 'text-primary bg-primary/10 px-1.5 py-0.5 rounded-md' : 'text-on-surface-variant opacity-70'">FR</span>
+        <span class="material-symbols-outlined text-primary text-[16px] sm:text-[18px]">translate</span>
+        <span class="flex items-center gap-0.5 sm:gap-1 font-mono font-bold text-[11px] sm:text-[13px]">
+          <span :class="appStore.language === 'en' ? 'text-primary bg-primary/10 px-1 py-0.5 rounded' : 'text-on-surface-variant opacity-70'">EN</span>
+          <span class="text-outline text-[10px]">|</span>
+          <span :class="appStore.language === 'fr' ? 'text-primary bg-primary/10 px-1 py-0.5 rounded' : 'text-on-surface-variant opacity-70'">FR</span>
         </span>
       </button>
 
       <div
-        class="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-surface-container-high border border-outline-variant/30 text-on-surface font-caption text-caption min-h-[34px]"
+        class="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-surface-container-high border border-outline-variant/30 text-on-surface font-caption text-caption min-h-[34px] shrink-0"
         :title="tr('Region of the active plot', 'Région de la parcelle active')"
       >
         <span class="material-symbols-outlined text-primary text-[14px]">location_on</span>
         <span class="font-body-bold text-primary">{{ regionLabel }}</span>
       </div>
 
-      <div class="relative" data-menu-root>
+      <div class="relative shrink-0" data-menu-root>
         <button
           type="button"
-          class="flex items-center gap-2 pl-1 cursor-pointer hover:opacity-90 transition-opacity"
+          class="flex items-center gap-2 pl-0.5 cursor-pointer hover:opacity-90 transition-opacity"
           @click="userMenuOpen = !userMenuOpen"
         >
-          <span class="w-9 h-9 rounded-full bg-primary text-on-primary flex items-center justify-center font-body-bold text-label-md shadow-sm ring-2 ring-primary/20">
+          <span class="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-primary text-on-primary flex items-center justify-center font-body-bold text-[12px] sm:text-label-md shadow-sm ring-2 ring-primary/20 shrink-0">
             {{ initials }}
           </span>
           <div class="hidden md:block text-left">
@@ -155,7 +155,7 @@ const plotLabel = computed(() => {
 
         <div
           v-if="userMenuOpen"
-          class="absolute right-0 mt-2 w-52 bg-surface-container-lowest rounded-xl shadow-xl border border-outline-variant/30 py-1 z-50"
+          class="absolute right-0 mt-2 w-52 max-w-[calc(100vw-24px)] bg-surface-container-lowest rounded-xl shadow-xl border border-outline-variant/30 py-1 z-50"
         >
           <RouterLink
             to="/profil"
