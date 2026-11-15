@@ -4,8 +4,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const DATA_DIR = process.env.AGROPREDICT_DATA_DIR || path.join(__dirname, 'data');
-const DB_FILE = path.join(DATA_DIR, 'agropredict.sqlite');
+let DATA_DIR = process.env.AGROPREDICT_DATA_DIR || path.join(__dirname, 'data');
+let DB_FILE = path.join(DATA_DIR, 'agropredict.sqlite');
 
 let db = null;
 
@@ -77,7 +77,14 @@ CREATE TABLE IF NOT EXISTS telemetry_cache (
 export async function initDb() {
   if (db) return db;
   const SQL = await initSqlJs();
-  if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+  try {
+    if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+  } catch (err) {
+    console.warn(`[db] Warning: Cannot write to ${DATA_DIR} (${err.code || err.message}). Falling back to local data directory.`);
+    DATA_DIR = path.join(__dirname, 'data');
+    DB_FILE = path.join(DATA_DIR, 'agropredict.sqlite');
+    if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+  }
 
   if (fs.existsSync(DB_FILE)) {
     db = new SQL.Database(new Uint8Array(fs.readFileSync(DB_FILE)));
